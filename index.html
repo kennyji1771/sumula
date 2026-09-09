@@ -6,23 +6,9 @@
     <title>Nexus Acelerador · Centro de Conocimiento</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
     <style>
-        :root {
-            --bg: #f4f7fc; --surface: #ffffff; --text: #212529; --text-secondary: #6c757d;
-            --header-bg: linear-gradient(135deg, #1a2a4a, #2c3e6b); --header-text: white;
-            --border-light: #dee2e6; --editor-bg: #fafbfc; --nodo-bg: white; --nodo-hover-bg: #f8faff;
-            --scrollbar-thumb: #c1c9d2; --modal-overlay: rgba(0,0,0,0.5);
-            --level-0-bg: #fef5e7; --level-0-border: #e67e22; --level-1-border: #3498db;
-            --level-2-border: #2ecc71; --level-3-border: #9b59b6; --level-4-border: #e74c3c;
-            --highlight-bg: #ffeb3b; --highlight-text: #000;
-        }
-        body.dark-theme {
-            --bg: #1e1e2e; --surface: #2a2a3c; --text: #e0e0e0; --text-secondary: #a0a0b0;
-            --border-light: #3a3a4c; --editor-bg: #2a2a3c; --nodo-bg: #2a2a3c; --nodo-hover-bg: #35355a;
-            --level-0-bg: #3d2e1c; --level-0-border: #f0a04b; --highlight-bg: #b8860b; --highlight-text: #fff;
-        }
+        :root { --bg: #f4f7fc; --surface: #ffffff; --text: #212529; --text-secondary: #6c757d; --header-bg: linear-gradient(135deg, #1a2a4a, #2c3e6b); --header-text: white; --border-light: #dee2e6; --editor-bg: #fafbfc; --nodo-bg: white; --nodo-hover-bg: #f8faff; --scrollbar-thumb: #c1c9d2; --modal-overlay: rgba(0,0,0,0.5); --level-0-bg: #fef5e7; --level-0-border: #e67e22; --level-1-border: #3498db; --level-2-border: #2ecc71; --level-3-border: #9b59b6; --level-4-border: #e74c3c; --highlight-bg: #ffeb3b; --highlight-text: #000; }
+        body.dark-theme { --bg: #1e1e2e; --surface: #2a2a3c; --text: #e0e0e0; --text-secondary: #a0a0b0; --header-bg: linear-gradient(135deg, #0d1b2a, #1b263b); --header-text: #ddd; --border-light: #3a3a4c; --nodo-bg: #2a2a3c; --nodo-hover-bg: #35355a; --level-0-bg: #3d2e1c; --level-0-border: #f0a04b; --highlight-bg: #b8860b; --highlight-text: #fff; }
         * { transition: background-color 0.25s, color 0.25s; }
         body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', Roboto, system-ui, sans-serif; margin: 0; min-height: 100vh; }
         .app-header { background: var(--header-bg); color: var(--header-text); padding: 12px 0; box-shadow: 0 4px 12px rgba(0,0,0,0.15); position: sticky; top: 0; z-index: 1050; }
@@ -35,59 +21,45 @@
         .btn-light { background: #f8f9fa; color: #212529; }
         .btn-outline-light { background: transparent; border: 1px solid rgba(255,255,255,0.5); color: white; }
         .btn-outline-light:hover { background: rgba(255,255,255,0.2); }
-        .editor-area, .mapa-area { background: var(--surface); border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.06); padding: 16px; height: calc(100vh - 180px); display: flex; flex-direction: column; overflow: hidden; position: relative; }
+        .editor-area, .mapa-area { background: var(--surface); border-radius: 16px; padding: 16px; height: calc(100vh - 180px); display: flex; flex-direction: column; overflow: hidden; position: relative; box-shadow: 0 4px 20px rgba(0,0,0,0.06); }
         .editor-area textarea { flex: 1; border: none; resize: none; font-family: 'Fira Code', 'Courier New', monospace; font-size: 14px; line-height: 1.7; padding: 12px; background: var(--editor-bg); color: var(--text); border-radius: 12px; outline: none; }
         .mapa-area { overflow: hidden; }
         .mapa-scroll { flex: 1; overflow-y: auto; }
-        .mapa-scroll::-webkit-scrollbar { width: 6px; }
-        .mapa-scroll::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 3px; }
-        .card-nodo { border-left: 5px solid; border-radius: 12px; padding: 10px 16px; margin-bottom: 10px; cursor: pointer; transition: transform 0.15s, background 0.2s; box-shadow: 0 1px 4px rgba(0,0,0,0.04); background: var(--nodo-bg); }
-        .card-nodo:hover { transform: translateX(4px); background: var(--nodo-hover-bg); }
+        .card-nodo { border-left: 5px solid; border-radius: 12px; padding: 10px 16px; margin-bottom: 10px; cursor: pointer; background: var(--nodo-bg); box-shadow: 0 1px 4px rgba(0,0,0,0.04); }
         .level-0 { border-left-color: var(--level-0-border); background: var(--level-0-bg); }
         .level-1 { border-left-color: var(--level-1-border); }
         .level-2 { border-left-color: var(--level-2-border); }
         .level-3 { border-left-color: var(--level-3-border); }
         .level-4 { border-left-color: var(--level-4-border); }
         .nodo-titulo { font-weight: 600; display: flex; justify-content: space-between; align-items: center; }
-        .nodo-hijos { margin-left: 28px; padding-left: 16px; border-left: 2px dashed var(--border-light); margin-top: 8px; }
+        .nodo-hijos { margin-left: 28px; padding-left: 16px; border-left: 2px dashed #ccc; margin-top: 8px; }
         .collapsed { display: none; }
-        .icono-toggle { font-size: 0.9rem; opacity: 0.6; margin-left: 12px; transition: 0.2s; }
-        .btn-fullscreen { position: absolute; top: 8px; right: 8px; background: rgba(0,0,0,0.1); border: none; border-radius: 50%; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 10; color: var(--text-secondary); }
-        .fullscreen-panel { position: fixed !important; top: 0; left: 0; width: 100vw !important; height: 100vh !important; z-index: 2000; border-radius: 0 !important; padding: 20px !important; }
-        .search-box { display: flex; align-items: center; background: var(--surface); border-radius: 20px; padding: 4px 8px; border: 1px solid var(--border-light); margin-bottom: 8px; gap: 4px; }
-        .search-box input { border: none; background: transparent; outline: none; width: 100%; padding: 4px 8px; color: var(--text); }
-        .reader-panel { background: var(--surface); border-radius: 12px; padding: 8px 12px; margin-bottom: 8px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; position: sticky; top: 0; z-index: 10; border-bottom: 1px solid var(--border-light); }
-        .dropdown { position: relative; display: inline-block; }
+        .icono-toggle { font-size: 0.9rem; opacity: 0.6; }
+        .search-box { display: flex; align-items: center; background: var(--surface); border-radius: 20px; padding: 4px 8px; border: 1px solid var(--border-light); margin-bottom: 8px; }
+        .search-box input { border: none; background: transparent; outline: none; flex: 1; color: var(--text); }
+        .reader-panel { background: var(--surface); border-radius: 12px; padding: 8px 12px; margin-bottom: 8px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; border-bottom: 1px solid var(--border-light); }
+        .dropdown { position: relative; }
         .dropdown-menu { display: none; position: absolute; right: 0; top: 100%; background: var(--surface); border: 1px solid var(--border-light); border-radius: 12px; min-width: 220px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 1000; padding: 8px 0; }
         .dropdown-menu.show { display: block; }
         .dropdown-item { display: block; padding: 8px 16px; color: var(--text); text-decoration: none; cursor: pointer; white-space: nowrap; }
-        .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: var(--modal-overlay); z-index: 3000; align-items: center; justify-content: center; }
+        .dropdown-item:hover { background: #f0f0f0; }
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 3000; align-items: center; justify-content: center; }
         .modal-overlay.show { display: flex; }
-        .modal-content { background: var(--surface); border-radius: 16px; max-width: 500px; width: 90%; padding: 20px; box-shadow: 0 8px 24px rgba(0,0,0,0.2); max-height: 80vh; overflow-y: auto; }
-        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
-        .modal-title { font-size: 1.2rem; font-weight: 600; }
-        .btn-close { background: transparent; border: none; font-size: 1.4rem; cursor: pointer; color: var(--text-secondary); }
-        select.form-select { background: var(--surface); color: var(--text); border: 1px solid var(--border-light); border-radius: 20px; padding: 4px 8px; }
+        .modal-content { background: var(--surface); border-radius: 16px; max-width: 500px; width: 90%; padding: 20px; max-height: 80vh; overflow-y: auto; }
         .btn-sumula-accion { background: #ffcd3c; color: #212529; border: none; border-radius: 30px; padding: 5px 14px; font-weight: 700; cursor: pointer; margin-top: 10px; }
-        /* Nuevos estilos */
         .node-select { margin-right: 8px; transform: scale(1.2); cursor: pointer; }
         .highlight-word { background: var(--highlight-bg); color: var(--highlight-text); border-radius: 3px; font-weight: bold; }
-        .recording-dot { color: red; animation: blink 1s infinite; }
-        @keyframes blink { 50% { opacity: 0; } }
-        .timer-display { font-family: monospace; font-weight: bold; font-size: 0.9rem; }
-        .speed-pitch { display: flex; flex-direction: column; gap: 2px; }
-        .speed-pitch label { font-size: 0.7rem; color: var(--text-secondary); }
+        .timer-display { font-family: monospace; font-weight: bold; }
     </style>
 </head>
 <body>
-    <!-- Header -->
+    <!-- HEADER -->
     <div class="app-header">
         <div class="container">
             <div class="row align-items-center">
                 <div class="col-md-5">
                     <div class="brand-wrapper">
-                        <img id="logoImg" class="logo-img" src="" alt="Logo" style="display: none;">
-                        <i id="defaultBrain" class="fas fa-brain fa-2x" style="color:#ffcd3c;"></i>
+                        <i class="fas fa-brain fa-2x" style="color:#ffcd3c;"></i>
                         <div>
                             <div class="brand-name">Nexus <span style="color:#ffcd3c;">Acelerador</span></div>
                             <div class="subtitle" id="tituloDinamico">Centro de Conocimiento</div>
@@ -95,21 +67,21 @@
                     </div>
                 </div>
                 <div class="col-md-7 toolbar-acciones justify-content-end mt-2 mt-md-0">
-                    <button class="btn btn-outline-light" id="btnSumula" title="Convertir a lenguaje SÚMULA">SÚMULA</button>
-                    <button class="btn btn-outline-light" id="btnCorolario" title="Cargar síntesis pedagógica">Corolario</button>
-                    <button class="btn btn-outline-light" id="btnConfig" title="Configuración"><i class="fas fa-cog"></i></button>
-                    <button class="btn btn-outline-light" id="btnAPA" title="Datos del proyecto"><i class="fas fa-id-card"></i> APA</button>
+                    <button class="btn btn-outline-light" id="btnSumula">SÚMULA</button>
+                    <button class="btn btn-outline-light" id="btnCorolario">Corolario</button>
+                    <button class="btn btn-outline-light" id="btnConfig"><i class="fas fa-cog"></i></button>
+                    <button class="btn btn-outline-light" id="btnAPA">APA</button>
                     <div class="dropdown">
                         <button class="btn btn-light dropdown-toggle" id="dropdownBtn">Acciones</button>
                         <div class="dropdown-menu" id="dropdownMenu">
-                            <a class="dropdown-item" id="exportarHtml"><i class="fas fa-file-code me-2"></i>Exportar HTML</a>
-                            <a class="dropdown-item" id="exportarTree"><i class="fas fa-tree me-2"></i>Exportar Árbol TXT</a>
-                            <a class="dropdown-item" id="exportarTxt"><i class="fas fa-file-alt me-2"></i>Exportar TXT Raw</a>
-                            <a class="dropdown-item" id="exportarMd"><i class="fab fa-markdown me-2"></i>Exportar Markdown</a>
-                            <a class="dropdown-item" id="exportarTxtEnriquecido"><i class="fas fa-book-open me-2"></i>Exportar TXT Enriquecido</a>
+                            <a class="dropdown-item" id="exportarHtml"><i class="fas fa-file-code"></i> Exportar HTML</a>
+                            <a class="dropdown-item" id="exportarTree"><i class="fas fa-tree"></i> Exportar Árbol TXT</a>
+                            <a class="dropdown-item" id="exportarTxt"><i class="fas fa-file-alt"></i> Exportar TXT Raw</a>
+                            <a class="dropdown-item" id="exportarMd"><i class="fab fa-markdown"></i> Exportar Markdown</a>
+                            <a class="dropdown-item" id="exportarTxtEnriquecido"><i class="fas fa-book-open"></i> Exportar TXT Enriquecido</a>
                             <hr>
-                            <a class="dropdown-item" id="vistaPreviaHtml"><i class="fas fa-eye me-2"></i>Vista previa HTML</a>
-                            <a class="dropdown-item" id="publicarVercel"><i class="fas fa-rocket me-2"></i>Publicar</a>
+                            <a class="dropdown-item" id="vistaPreviaHtml"><i class="fas fa-eye"></i> Vista previa HTML</a>
+                            <a class="dropdown-item" id="publicarVercel"><i class="fas fa-rocket"></i> Publicar</a>
                         </div>
                     </div>
                     <button class="btn btn-light" id="expandirTodo"><i class="fas fa-expand-alt"></i></button>
@@ -122,40 +94,29 @@
         </div>
     </div>
 
-    <!-- Cuerpo -->
+    <!-- CONTENIDO -->
     <div class="container mt-3">
         <div class="row g-3">
             <div class="col-lg-6" id="panelEditor">
                 <div class="editor-area">
-                    <button class="btn-fullscreen" data-target="panelEditor"><i class="fas fa-expand"></i></button>
                     <textarea id="contenido" spellcheck="false"></textarea>
                 </div>
             </div>
             <div class="col-lg-6" id="panelMapa">
                 <div class="mapa-area">
-                    <button class="btn-fullscreen" data-target="panelMapa"><i class="fas fa-expand"></i></button>
                     <div class="search-box">
-                        <i class="fas fa-search text-secondary"></i>
+                        <i class="fas fa-search"></i>
                         <input type="text" id="searchInput" placeholder="Buscar en mapa...">
-                        <button id="clearSearch"><i class="fas fa-times"></i></button>
+                        <button id="clearSearch">✕</button>
                     </div>
-                    <!-- Panel de lectura con nuevos controles -->
-                    <div class="reader-panel" id="readerPanel">
+                    <div class="reader-panel">
                         <button class="btn btn-sm btn-primary" id="btnPlayPause">▶</button>
-                        <button class="btn btn-sm btn-warning" id="btnPause" style="display: none;">⏸</button>
+                        <button class="btn btn-sm btn-warning" id="btnPause" style="display:none;">⏸</button>
                         <button class="btn btn-sm btn-secondary" id="btnStop">⏹</button>
-                        <button class="btn btn-sm btn-danger" id="btnRec" title="Grabar audio"><i class="fas fa-circle"></i></button>
-                        <button class="btn btn-sm btn-info" id="btnTimer" title="Cronómetro">⏱</button>
-                        <button class="btn btn-sm btn-success" id="btnKaraoke" title="Activar lectura asistida"><i class="fas fa-book-open"></i></button>
-                        <div class="speed-pitch">
-                            <label>Velocidad</label>
-                            <input type="range" id="rateRange" min="0.5" max="2" step="0.1" value="0.9">
-                        </div>
-                        <div class="speed-pitch">
-                            <label>Tono</label>
-                            <input type="range" id="pitchRange" min="0.5" max="1.5" step="0.1" value="1">
-                        </div>
-                        <select class="form-select form-select-sm" id="voiceSelect" style="width: auto;"></select>
+                        <button class="btn btn-sm btn-danger" id="btnRec"><i class="fas fa-circle"></i></button>
+                        <button class="btn btn-sm btn-info" id="btnTimer">⏱</button>
+                        <button class="btn btn-sm btn-success" id="btnKaraoke"><i class="fas fa-book-open"></i></button>
+                        <select class="form-select form-select-sm" id="voiceSelect" style="width:auto;"></select>
                         <span id="currentReading" class="text-muted small">Listo</span>
                         <span id="timerDisplay" class="timer-display">00:00</span>
                         <span id="estimatedTime" class="text-muted small"></span>
@@ -168,141 +129,91 @@
         </div>
     </div>
 
-    <!-- Modales -->
+    <!-- MODALES -->
     <div class="modal-overlay" id="sumulaModal">
         <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Importar a SÚMULA</h5>
-                <button class="btn-close" id="closeSumulaModal">&times;</button>
-            </div>
-            <div class="mb-3">
-                <label class="form-label">Subir archivo (PDF, DOCX, TXT, HTML)</label>
-                <input type="file" class="form-control" id="fileSumulaInput" accept=".pdf,.docx,.txt,.doc,.html,.htm">
-                <div class="form-text">El sistema extraerá el texto o analizará la estructura y lo convertirá automáticamente.</div>
-            </div>
+            <div class="modal-header"><h5 class="modal-title">Importar a SÚMULA</h5><button class="btn-close" id="closeSumulaModal">&times;</button></div>
+            <input type="file" class="form-control" id="fileSumulaInput" accept=".pdf,.docx,.txt,.html,.htm">
             <div class="text-center my-2">- O -</div>
-            <div class="mb-3">
-                <label class="form-label">Pegar texto libre (incluye código HTML)</label>
-                <textarea class="form-control" id="pastedTextSumula" rows="4"></textarea>
-            </div>
-            <div class="d-flex justify-content-between">
+            <textarea class="form-control" id="pastedTextSumula" rows="4" placeholder="Pega texto o código HTML..."></textarea>
+            <div class="d-flex justify-content-between mt-2">
                 <button class="btn btn-secondary" id="cancelSumula">Cancelar</button>
                 <button class="btn-sumula-accion" id="processSumula">Procesar</button>
             </div>
-            <div id="sumulaLoading" class="text-center mt-2" style="display:none;"><i class="fas fa-spinner fa-spin"></i> Procesando...</div>
         </div>
     </div>
     <div class="modal-overlay" id="configModal">
         <div class="modal-content">
             <div class="modal-header"><h5 class="modal-title">Configuración</h5><button class="btn-close" id="closeConfigModal">&times;</button></div>
-            <div class="mb-3"><label>Nombre del archivo de logo</label><input type="text" class="form-control" id="logoFilename"></div>
-            <div class="form-check form-switch mb-3"><input class="form-check-input" type="checkbox" id="autoSaveToggle" checked><label>Autoguardar contenido</label></div>
-            <button class="btn btn-primary" id="saveConfig">Guardar</button>
+            <input type="text" class="form-control" id="logoFilename" placeholder="Nombre logo.png">
+            <button class="btn btn-primary mt-2" id="saveConfig">Guardar</button>
         </div>
     </div>
     <div class="modal-overlay" id="apaModal">
         <div class="modal-content">
             <div class="modal-header"><h5 class="modal-title">Datos del proyecto (APA)</h5><button class="btn-close" id="closeApaModal">&times;</button></div>
-            <div class="mb-3"><label>Autor</label><input type="text" class="form-control" id="apaAuthor"></div>
-            <div class="mb-3"><label>Título del documento</label><input type="text" class="form-control" id="apaTitle"></div>
-            <div class="mb-3"><label>Institución</label><input type="text" class="form-control" id="apaInstitution"></div>
-            <div class="mb-3"><label>Fecha</label><input type="date" class="form-control" id="apaDate"></div>
-            <button class="btn btn-primary w-100" id="saveAPA">Guardar</button>
+            <div class="mb-2"><label>Autor</label><input type="text" class="form-control" id="apaAuthor"></div>
+            <div class="mb-2"><label>Título</label><input type="text" class="form-control" id="apaTitle"></div>
+            <div class="mb-2"><label>Fecha</label><input type="date" class="form-control" id="apaDate"></div>
+            <button class="btn btn-primary w-100" id="saveAPA">Guardar APA</button>
         </div>
     </div>
 
-    <div class="footer"><i class="fas fa-bolt text-warning"></i> Acelera tus ideas · Modo Karaoke · Selección múltiple · Descarga Audio</div>
+    <div class="footer text-center p-2"><i class="fas fa-bolt"></i> Acelera tus ideas</div>
 
     <script>
-    (function() {
-        // ============================ DOM ============================
-        const textarea = document.getElementById('contenido');
-        const mapaDiv = document.getElementById('mapa');
-        const mapaScroll = document.getElementById('mapaScroll');
-        const tituloDin = document.getElementById('tituloDinamico');
-        const searchInput = document.getElementById('searchInput');
-        const clearSearchBtn = document.getElementById('clearSearch');
-        const voiceSelect = document.getElementById('voiceSelect');
-        const btnPlayPause = document.getElementById('btnPlayPause');
-        const btnPause = document.getElementById('btnPause');
-        const btnStop = document.getElementById('btnStop');
-        const btnRec = document.getElementById('btnRec');
-        const btnTimer = document.getElementById('btnTimer');
-        const btnKaraoke = document.getElementById('btnKaraoke');
-        const currentReadingSpan = document.getElementById('currentReading');
-        const timerDisplay = document.getElementById('timerDisplay');
-        const estimatedTime = document.getElementById('estimatedTime');
-        const rateRange = document.getElementById('rateRange');
-        const pitchRange = document.getElementById('pitchRange');
+        (function() {
+            try {
+                // ==== DEFINICIÓN DE VARIABLES ====
+                const textarea = document.getElementById('contenido');
+                const mapaDiv = document.getElementById('mapa');
+                const tituloDin = document.getElementById('tituloDinamico');
+                const searchInput = document.getElementById('searchInput');
+                const clearSearchBtn = document.getElementById('clearSearch');
+                const voiceSelect = document.getElementById('voiceSelect');
+                const btnPlayPause = document.getElementById('btnPlayPause');
+                const btnPause = document.getElementById('btnPause');
+                const btnStop = document.getElementById('btnStop');
+                const btnRec = document.getElementById('btnRec');
+                const btnTimer = document.getElementById('btnTimer');
+                const btnKaraoke = document.getElementById('btnKaraoke');
+                const currentReadingSpan = document.getElementById('currentReading');
+                const timerDisplay = document.getElementById('timerDisplay');
+                const estimatedTime = document.getElementById('estimatedTime');
 
-        // ============================ ESTADO GLOBAL ============================
-        let historial = [], historialPos = -1;
-        const MAX_HIST = 50;
-        let synth = window.speechSynthesis;
-        let utterance = null;
-        let isLooping = false;
-        let isPaused = false;
-        let karaokeActivo = false;
-        let isRecording = false;
-        let mediaRecorder = null;
-        let audioChunks = [];
-        let timerInterval = null;
-        let startTime = 0;
-        let elapsedSeconds = 0;
-        let currentReadingList = [];
-        let currentReadingIndex = 0;
-        let currentNodoId = null;
-        let selectedIds = new Set();
-        let currentSpan = null;
-        let currentPalabraIndex = 0;
-        let palabrasArray = [];
+                let synth = window.speechSynthesis;
+                let utterance = null;
+                let isLooping = false;
+                let karaokeActivo = false;
+                let isRecording = false;
+                let mediaRecorder = null;
+                let audioChunks = [];
+                let timerInterval = null;
+                let elapsedSeconds = 0;
+                let currentReadingList = [];
+                let currentReadingIndex = 0;
+                let currentNodoId = null;
+                let selectedIds = new Set();
+                let historial = [];
+                let historialPos = -1;
 
-        // ============================ ALMACENAMIENTO ============================
-        const STORAGE_CONTENT = 'nexus_contenido';
-        const STORAGE_THEME = 'nexus_theme';
-        const STORAGE_AUTOSAVE = 'nexus_autosave';
-        const STORAGE_APA = 'nexus_apa';
+                // ==== FUNCIONES BÁSICAS ====
+                function guardarContenido() { localStorage.setItem('nexus_contenido', textarea.value); }
+                function cargarContenido() { textarea.value = localStorage.getItem('nexus_contenido') || ejemplo; }
+                function pushHistorial() { historial.push(textarea.value); historialPos = historial.length - 1; }
+                function undo() { if (historialPos > 0) { historialPos--; textarea.value = historial[historialPos]; generarMapa(); } }
+                function redo() { if (historialPos < historial.length - 1) { historialPos++; textarea.value = historial[historialPos]; generarMapa(); } }
+                function aplicarTema() {
+                    const tema = localStorage.getItem('nexus_theme');
+                    document.body.classList.toggle('dark-theme', tema === 'dark');
+                    document.getElementById('btnTheme').innerHTML = tema === 'dark' ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
+                }
+                function toggleTema() {
+                    localStorage.setItem('nexus_theme', document.body.classList.contains('dark-theme') ? 'light' : 'dark');
+                    aplicarTema();
+                }
 
-        function guardarContenido() { if (localStorage.getItem(STORAGE_AUTOSAVE) !== 'false') localStorage.setItem(STORAGE_CONTENT, textarea.value); }
-        function cargarContenido() { textarea.value = localStorage.getItem(STORAGE_CONTENT) || ejemplo; }
-        function pushHistorial() {
-            const t = textarea.value;
-            if (historial.length === 0 || historial[historialPos] !== t) {
-                historial = historial.slice(0, historialPos + 1);
-                historial.push(t);
-                if (historial.length > MAX_HIST) historial.shift();
-                historialPos = historial.length - 1;
-            }
-        }
-        function undo() { if (historialPos > 0) { historialPos--; textarea.value = historial[historialPos]; generarMapa(); } }
-        function redo() { if (historialPos < historial.length - 1) { historialPos++; textarea.value = historial[historialPos]; generarMapa(); } }
-        function aplicarTema() {
-            const tema = localStorage.getItem(STORAGE_THEME);
-            const btn = document.getElementById('btnTheme');
-            if (tema === 'dark') { document.body.classList.add('dark-theme'); btn.innerHTML = '<i class="fas fa-sun"></i>'; }
-            else { document.body.classList.remove('dark-theme'); btn.innerHTML = '<i class="fas fa-moon"></i>'; }
-        }
-        function toggleTema() {
-            localStorage.setItem(STORAGE_THEME, document.body.classList.contains('dark-theme') ? 'light' : 'dark');
-            aplicarTema();
-        }
-        function cargarAPA() {
-            const d = JSON.parse(localStorage.getItem(STORAGE_APA) || '{}');
-            document.getElementById('apaAuthor').value = d.author || '';
-            document.getElementById('apaTitle').value = d.title || '';
-            document.getElementById('apaInstitution').value = d.institution || '';
-            document.getElementById('apaDate').value = d.date || '';
-        }
-        function guardarAPA() {
-            localStorage.setItem(STORAGE_APA, JSON.stringify({
-                author: document.getElementById('apaAuthor').value.trim(),
-                title: document.getElementById('apaTitle').value.trim(),
-                institution: document.getElementById('apaInstitution').value.trim(),
-                date: document.getElementById('apaDate').value
-            }));
-        }
-
-        const ejemplo = `# Acelerador de Conocimiento
+                const ejemplo = `# Acelerador de Conocimiento
 ## ¿Qué es?
 - Herramienta para estructurar ideas jerárquicamente.
 ## ¿Para qué sirve?
@@ -311,417 +222,265 @@
 ### Edición en tiempo real
 ### Interactividad`;
 
-        // ============================ PARSEO Y RENDERIZADO ============================
-        function parsear(texto) {
-            const lineas = texto.split(/\r?\n/); const nodos = []; let pila = []; let id = 1;
-            for (let linea of lineas) {
-                linea = linea.trim(); if (!linea) continue;
-                let nivel = -1, etiqueta = linea;
-                if (linea.startsWith("# ")) { nivel = 0; etiqueta = linea.slice(2); }
-                else if (linea.startsWith("## ")) { nivel = 1; etiqueta = linea.slice(3); }
-                else if (linea.startsWith("### ")) { nivel = 2; etiqueta = linea.slice(4); }
-                else if (linea.startsWith("#### ")) { nivel = 3; etiqueta = linea.slice(5); }
-                else if (linea.startsWith("- ") || linea.startsWith("* ")) { nivel = pila.length ? pila[pila.length-1].nivel + 1 : 1; etiqueta = linea.slice(2); }
-                else { nivel = pila.length ? pila[pila.length-1].nivel + 1 : 1; etiqueta = linea; }
-                while (pila.length && pila[pila.length-1].nivel >= nivel) pila.pop();
-                const padreId = pila.length ? pila[pila.length-1].id : null;
-                nodos.push({ id: id, etiqueta, nivel, padreId }); pila.push({ id: id, nivel }); id++;
-            }
-            const hijosMap = new Map(); nodos.forEach(n => hijosMap.set(n.id, []));
-            nodos.forEach(n => { if (n.padreId) hijosMap.get(n.padreId).push(n.id); });
-            return { nodos, hijosMap, raices: nodos.filter(n => n.padreId === null) };
-        }
-        const parsearString = parsear.toString();
-        const parsearBody = parsearString.slice(parsearString.indexOf('{') + 1, parsearString.lastIndexOf('}')).trim();
-
-        function renderizar(raices, nodosMap, hijosMap, searchTerm = '') {
-            if (!raices.length) { mapaDiv.innerHTML = '<div class="alert alert-warning">⚠️ Usa # para la raíz.</div>'; return; }
-            const contenedor = document.createElement('div');
-            const term = searchTerm.toLowerCase().trim();
-            function construir(idNodo) {
-                const nodo = nodosMap.get(idNodo); if (!nodo) return null;
-                const hijos = hijosMap.get(idNodo) || [];
-                const coincide = !term || nodo.etiqueta.toLowerCase().includes(term);
-                if (term && !coincide) return null;
-                const card = document.createElement('div');
-                card.className = `card-nodo level-${Math.min(nodo.nivel, 7)}`;
-                // Checkbox selección
-                const check = document.createElement('input');
-                check.type = 'checkbox';
-                check.className = 'node-select';
-                check.dataset.id = idNodo;
-                check.checked = selectedIds.has(idNodo);
-                check.addEventListener('click', (e) => e.stopPropagation());
-                check.addEventListener('change', () => {
-                    if (check.checked) selectedIds.add(idNodo); else selectedIds.delete(idNodo);
-                    calcularTiempoEstimado();
-                });
-                const tituloDiv = document.createElement('div'); tituloDiv.className = 'nodo-titulo';
-                tituloDiv.appendChild(check);
-                const span = document.createElement('span'); span.textContent = nodo.etiqueta; span.setAttribute('data-id', idNodo);
-                tituloDiv.appendChild(span);
-                let icono = null;
-                if (hijos.length) { icono = document.createElement('span'); icono.className = 'icono-toggle'; icono.textContent = '▶'; tituloDiv.appendChild(icono); }
-                card.appendChild(tituloDiv);
-                let contHijos = null;
-                if (hijos.length) {
-                    contHijos = document.createElement('div'); contHijos.className = 'nodo-hijos collapsed';
-                    hijos.forEach(h => { const c = construir(h); if (c) contHijos.appendChild(c); });
-                    if (contHijos.children.length) card.appendChild(contHijos);
-                }
-                card.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    if (contHijos && icono) { contHijos.classList.toggle('collapsed'); icono.textContent = contHijos.classList.contains('collapsed') ? '▶' : '▼'; }
-                    currentNodoId = idNodo;
-                    stopReading();
-                    prepararLecturaDesdeNodo(idNodo);
-                });
-                span.addEventListener('dblclick', (e) => {
-                    e.stopPropagation();
-                    const orig = span.textContent;
-                    const input = document.createElement('input'); input.type = 'text'; input.value = orig; input.className = 'form-control form-control-sm'; input.style.width = '100%';
-                    span.replaceWith(input); input.focus();
-                    input.addEventListener('blur', () => { if (input.value.trim() !== orig) actualizarNodoEnTexto(idNodo, orig, input.value.trim()); generarMapa(); });
-                });
-                return card;
-            }
-            raices.forEach(r => { const c = construir(r.id); if (c) contenedor.appendChild(c); });
-            mapaDiv.innerHTML = ''; mapaDiv.appendChild(contenedor);
-        }
-
-        function actualizarNodoEnTexto(id, viejo, nuevo) {
-            let lineas = textarea.value.split('\n');
-            for (let i = 0; i < lineas.length; i++) { if (lineas[i].trim().endsWith(viejo)) { lineas[i] = lineas[i].substring(0, lineas[i].lastIndexOf(viejo)) + nuevo; break; } }
-            textarea.value = lineas.join('\n'); pushHistorial(); guardarContenido();
-        }
-
-        function generarMapa() {
-            if (!textarea.value.trim()) { mapaDiv.innerHTML = '<div class="alert alert-info">Escribe contenido.</div>'; return; }
-            const { nodos, hijosMap, raices } = parsear(textarea.value);
-            const nodosMap = new Map(nodos.map(n => [n.id, n]));
-            tituloDin.textContent = raices.length ? raices[0].etiqueta : 'Centro';
-            document.title = `Nexus Acelerador · ${tituloDin.textContent}`;
-            renderizar(raices, nodosMap, hijosMap, searchInput.value);
-            mapaScroll.scrollTop = 0;
-            calcularTiempoEstimado();
-        }
-
-        // ============================ LECTURA Y KARAOKE ============================
-        function poblarVoces() {
-            const voces = synth.getVoices().filter(v => v.lang.startsWith('es'));
-            voiceSelect.innerHTML = '';
-            voces.forEach((v, i) => { const opt = document.createElement('option'); opt.value = i; opt.textContent = v.name + ' (' + v.lang + ')'; voiceSelect.appendChild(opt); });
-            const pref = voces.findIndex(v => v.name.includes('Sabina') || v.name.includes('Diego') || v.name.includes('Google') || v.lang === 'es-US');
-            if (pref >= 0) voiceSelect.selectedIndex = pref;
-        }
-        synth.onvoiceschanged = poblarVoces; poblarVoces();
-
-        function limpiarTextoParaVoz(texto) {
-            return texto.replace(/^#{1,6}\s*/gm, '').replace(/^[-*]\s*/gm, '').replace(/[*_~`>#\(\)\[\]"";]/g, ' ').replace(/\n+/g, '. ').replace(/\b\d+(\.\d+)*\.?\s*/g, ' ').replace(/\s{2,}/g, ' ').trim();
-        }
-
-        function obtenerTextoSeleccionado() {
-            const { nodos, hijosMap, raices } = parsear(textarea.value);
-            const nodosMap = new Map(nodos.map(n => [n.id, n]));
-            let textoFinal = [];
-            if (selectedIds.size > 0) {
-                Array.from(selectedIds).forEach(id => {
-                    if (nodosMap.has(id)) {
-                        const nodo = nodosMap.get(id);
-                        textoFinal.push(nodo.etiqueta);
-                        (hijosMap.get(id)||[]).forEach(recorrer);
+                // ==== PARSEO ====
+                function parsear(texto) {
+                    const lineas = texto.split(/\r?\n/); const nodos = []; let pila = []; let id = 1;
+                    for (let linea of lineas) {
+                        linea = linea.trim(); if (!linea) continue;
+                        let nivel = -1, etiqueta = linea;
+                        if (linea.startsWith("# ")) { nivel = 0; etiqueta = linea.slice(2); }
+                        else if (linea.startsWith("## ")) { nivel = 1; etiqueta = linea.slice(3); }
+                        else if (linea.startsWith("### ")) { nivel = 2; etiqueta = linea.slice(4); }
+                        else if (linea.startsWith("#### ")) { nivel = 3; etiqueta = linea.slice(5); }
+                        else if (linea.startsWith("- ") || linea.startsWith("* ")) { nivel = pila.length ? pila[pila.length-1].nivel + 1 : 1; etiqueta = linea.slice(2); }
+                        else { nivel = pila.length ? pila[pila.length-1].nivel + 1 : 1; etiqueta = linea; }
+                        while (pila.length && pila[pila.length-1].nivel >= nivel) pila.pop();
+                        const padreId = pila.length ? pila[pila.length-1].id : null;
+                        nodos.push({ id: id, etiqueta, nivel, padreId }); pila.push({ id: id, nivel }); id++;
                     }
+                    const hijosMap = new Map(); nodos.forEach(n => hijosMap.set(n.id, []));
+                    nodos.forEach(n => { if (n.padreId) hijosMap.get(n.padreId).push(n.id); });
+                    return { nodos, hijosMap, raices: nodos.filter(n => n.padreId === null) };
+                }
+                const parsearString = parsear.toString();
+                const parsearBody = parsearString.slice(parsearString.indexOf('{') + 1, parsearString.lastIndexOf('}')).trim();
+
+                function renderizar(raices, nodosMap, hijosMap, searchTerm = '') {
+                    if (!raices.length) { mapaDiv.innerHTML = '<div class="alert alert-warning">⚠️ Usa # para la raíz.</div>'; return; }
+                    const contenedor = document.createElement('div');
+                    const term = searchTerm.toLowerCase().trim();
+                    function construir(idNodo) {
+                        const nodo = nodosMap.get(idNodo); if (!nodo) return null;
+                        const hijos = hijosMap.get(idNodo) || [];
+                        const coincide = !term || nodo.etiqueta.toLowerCase().includes(term);
+                        if (term && !coincide) return null;
+                        const card = document.createElement('div');
+                        card.className = `card-nodo level-${Math.min(nodo.nivel, 7)}`;
+                        const check = document.createElement('input');
+                        check.type = 'checkbox'; check.className = 'node-select';
+                        check.dataset.id = idNodo; check.checked = selectedIds.has(idNodo);
+                        check.addEventListener('click', (e) => e.stopPropagation());
+                        check.addEventListener('change', () => { if (check.checked) selectedIds.add(idNodo); else selectedIds.delete(idNodo); calcularTiempoEstimado(); });
+                        const tituloDiv = document.createElement('div'); tituloDiv.className = 'nodo-titulo';
+                        tituloDiv.appendChild(check);
+                        const span = document.createElement('span'); span.textContent = nodo.etiqueta; span.setAttribute('data-id', idNodo);
+                        tituloDiv.appendChild(span);
+                        let icono = null;
+                        if (hijos.length) { icono = document.createElement('span'); icono.className = 'icono-toggle'; icono.textContent = '▶'; tituloDiv.appendChild(icono); }
+                        card.appendChild(tituloDiv);
+                        let contHijos = null;
+                        if (hijos.length) {
+                            contHijos = document.createElement('div'); contHijos.className = 'nodo-hijos collapsed';
+                            hijos.forEach(h => { const c = construir(h); if (c) contHijos.appendChild(c); });
+                            card.appendChild(contHijos);
+                        }
+                        card.addEventListener('click', (e) => {
+                            e.stopPropagation();
+                            if (contHijos && icono) { contHijos.classList.toggle('collapsed'); icono.textContent = contHijos.classList.contains('collapsed') ? '▶' : '▼'; }
+                            currentNodoId = idNodo; stopReading(); prepararLecturaDesdeNodo(idNodo);
+                        });
+                        span.addEventListener('dblclick', (e) => {
+                            e.stopPropagation();
+                            const orig = span.textContent;
+                            const input = document.createElement('input'); input.type = 'text'; input.value = orig;
+                            input.className = 'form-control form-control-sm'; input.style.width = '100%';
+                            span.replaceWith(input); input.focus();
+                            input.addEventListener('blur', () => { if (input.value.trim() !== orig) actualizarNodoEnTexto(idNodo, orig, input.value.trim()); generarMapa(); });
+                        });
+                        return card;
+                    }
+                    raices.forEach(r => { const c = construir(r.id); if (c) contenedor.appendChild(c); });
+                    mapaDiv.innerHTML = ''; mapaDiv.appendChild(contenedor);
+                }
+
+                function actualizarNodoEnTexto(id, viejo, nuevo) {
+                    let lineas = textarea.value.split('\n');
+                    for (let i = 0; i < lineas.length; i++) { if (lineas[i].trim().endsWith(viejo)) { lineas[i] = lineas[i].substring(0, lineas[i].lastIndexOf(viejo)) + nuevo; break; } }
+                    textarea.value = lineas.join('\n'); pushHistorial(); guardarContenido();
+                }
+
+                function generarMapa() {
+                    if (!textarea.value.trim()) { mapaDiv.innerHTML = '<div class="alert alert-info">Escribe contenido.</div>'; return; }
+                    const { nodos, hijosMap, raices } = parsear(textarea.value);
+                    const nodosMap = new Map(nodos.map(n => [n.id, n]));
+                    tituloDin.textContent = raices.length ? raices[0].etiqueta : 'Centro';
+                    document.title = `Nexus Acelerador · ${tituloDin.textContent}`;
+                    renderizar(raices, nodosMap, hijosMap, searchInput.value);
+                    calcularTiempoEstimado();
+                }
+
+                // ==== LECTURA Y KARAOKE ====
+                function poblarVoces() {
+                    const voces = synth.getVoices().filter(v => v.lang.startsWith('es'));
+                    voiceSelect.innerHTML = '';
+                    voces.forEach((v, i) => { const opt = document.createElement('option'); opt.value = i; opt.textContent = v.name; voiceSelect.appendChild(opt); });
+                }
+                synth.onvoiceschanged = poblarVoces; poblarVoces();
+
+                function limpiarTexto(t) { return t.replace(/^#{1,6}\s*/gm, '').replace(/^[-*]\s*/gm, '').replace(/[*_~`>#\(\)\[\]";]/g, ' ').replace(/\n+/g, '. ').trim(); }
+
+                function obtenerTextoSeleccionado() {
+                    const { nodos, hijosMap, raices } = parsear(textarea.value);
+                    const nodosMap = new Map(nodos.map(n => [n.id, n]));
+                    let textoFinal = [];
+                    function recorrer(id) { const nodo = nodosMap.get(id); if (nodo) { textoFinal.push(nodo.etiqueta); (hijosMap.get(id)||[]).forEach(recorrer); } }
+                    if (selectedIds.size > 0) {
+                        Array.from(selectedIds).forEach(id => { if (nodosMap.has(id)) { textoFinal.push(nodosMap.get(id).etiqueta); (hijosMap.get(id)||[]).forEach(recorrer); } });
+                    } else { raices.forEach(r => recorrer(r.id)); }
+                    return textoFinal;
+                }
+
+                function leerSiguienteItem() {
+                    if (currentReadingIndex >= currentReadingList.length) {
+                        if (isLooping) { currentReadingIndex = 0; }
+                        else { stopReading(); currentReadingSpan.textContent = 'Lectura finalizada.'; return; }
+                    }
+                    const txt = currentReadingList[currentReadingIndex];
+                    const limpio = limpiarTexto(txt);
+                    if (!limpio) { currentReadingIndex++; leerSiguienteItem(); return; }
+                    if (utterance) synth.cancel();
+                    utterance = new SpeechSynthesisUtterance(limpio);
+                    const voces = synth.getVoices().filter(v => v.lang.startsWith('es'));
+                    if (voces.length) utterance.voice = voces[parseInt(voiceSelect.value)] || voces[0];
+                    utterance.rate = 0.9; utterance.pitch = 1;
+                    if (karaokeActivo) {
+                        let span = document.querySelector(`span[data-id="${currentReadingIndex}"]`);
+                        if (span) { span.classList.add('highlight-word'); }
+                    }
+                    utterance.onend = () => { currentReadingIndex++; leerSiguienteItem(); };
+                    synth.speak(utterance);
+                    currentReadingSpan.textContent = `Leyendo: "${limpio.substring(0,30)}..."`;
+                    if (!timerInterval) iniciarCronometro();
+                }
+
+                function prepararLecturaDesdeNodo(id) {
+                    currentReadingList = [];
+                    const { nodos, hijosMap } = parsear(textarea.value);
+                    const nodosMap = new Map(nodos.map(n => [n.id, n]));
+                    function recorrer(id) { const n = nodosMap.get(id); if (!n) return; currentReadingList.push(n.etiqueta); (hijosMap.get(id)||[]).forEach(recorrer); }
+                    if (nodosMap.has(id)) recorrer(id);
+                    else currentReadingList = obtenerTextoSeleccionado();
+                    currentReadingIndex = 0;
+                    leerSiguienteItem();
+                }
+
+                function togglePlayPause() {
+                    if (synth.speaking && !synth.paused) { synth.pause(); btnPlayPause.textContent = '▶'; btnPause.style.display = 'inline-block'; currentReadingSpan.textContent = 'Pausado'; if (timerInterval) { clearInterval(timerInterval); timerInterval = null; } }
+                    else if (synth.paused) { synth.resume(); btnPlayPause.textContent = '⏸'; btnPause.style.display = 'none'; currentReadingSpan.textContent = 'Reanudando...'; if (!timerInterval) iniciarCronometro(); }
+                    else { if (!currentNodoId) { const { raices } = parsear(textarea.value); if (raices.length) currentNodoId = raices[0].id; } prepararLecturaDesdeNodo(currentNodoId); btnPlayPause.textContent = '⏸'; }
+                }
+
+                function stopReading() {
+                    synth.cancel(); utterance = null; isLooping = false;
+                    btnPlayPause.textContent = '▶'; btnPause.style.display = 'none'; btnLoop.textContent = '🔁';
+                    currentReadingSpan.textContent = 'Detenido.';
+                    if (timerInterval) { clearInterval(timerInterval); timerInterval = null; timerDisplay.textContent = '00:00'; }
+                }
+
+                function iniciarCronometro() {
+                    if (timerInterval) return;
+                    const startTime = Date.now();
+                    timerInterval = setInterval(() => {
+                        elapsedSeconds = Math.floor((Date.now() - startTime) / 1000);
+                        timerDisplay.textContent = new Date(elapsedSeconds * 1000).toISOString().substring(14, 19);
+                    }, 1000);
+                }
+
+                function calcularTiempoEstimado() {
+                    const texto = obtenerTextoSeleccionado().join(' ');
+                    const palabras = texto.trim().split(/\s+/).length;
+                    const wpm = 175;
+                    const segundos = Math.round((palabras / wpm) * 60);
+                    estimatedTime.textContent = `Estimado: ${Math.floor(segundos/60)}m ${String(segundos%60).padStart(2,'0')}s (${palabras} palabras)`;
+                }
+
+                // ==== GRABACIÓN ====
+                async function toggleRec() {
+                    if (!isRecording) {
+                        try {
+                            const stream = await navigator.mediaDevices.getDisplayMedia({ audio: true, video: false });
+                            mediaRecorder = new MediaRecorder(stream); audioChunks = [];
+                            mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+                            mediaRecorder.onstop = () => {
+                                const blob = new Blob(audioChunks, { type: mediaRecorder.mimeType });
+                                const url = URL.createObjectURL(blob);
+                                const a = document.createElement('a'); a.href = url; a.download = `audio_${Date.now()}.webm`; a.click();
+                                isRecording = false; btnRec.innerHTML = '<i class="fas fa-circle"></i>';
+                            };
+                            mediaRecorder.start(); isRecording = true; btnRec.innerHTML = '<i class="fas fa-square"></i>';
+                            alert("Grabación iniciada. Selecciona la pestaña y activa el audio.");
+                        } catch(e) { alert("No soportado o cancelado."); }
+                    } else { if (mediaRecorder) mediaRecorder.stop(); }
+                }
+
+                // ==== EVENTOS ====
+                textarea.addEventListener('input', () => { clearTimeout(timeoutId); timeoutId = setTimeout(() => { pushHistorial(); guardarContenido(); generarMapa(); }, 300); });
+                let timeoutId;
+                searchInput.addEventListener('input', generarMapa);
+                clearSearchBtn.addEventListener('click', () => { searchInput.value = ''; generarMapa(); });
+                document.getElementById('expandirTodo').addEventListener('click', () => { document.querySelectorAll('.nodo-hijos').forEach(c => c.classList.remove('collapsed')); document.querySelectorAll('.icono-toggle').forEach(i => i.textContent = '▼'); });
+                document.getElementById('colapsarTodo').addEventListener('click', () => { document.querySelectorAll('.nodo-hijos').forEach(c => c.classList.add('collapsed')); document.querySelectorAll('.icono-toggle').forEach(i => i.textContent = '▶'); });
+                document.getElementById('btnUndo').addEventListener('click', undo);
+                document.getElementById('btnRedo').addEventListener('click', redo);
+                document.getElementById('btnTheme').addEventListener('click', toggleTema);
+                btnPlayPause.addEventListener('click', togglePlayPause);
+                btnPause.addEventListener('click', () => { synth.pause(); btnPlayPause.textContent = '▶'; btnPause.style.display = 'none'; });
+                btnStop.addEventListener('click', stopReading);
+                btnLoop.addEventListener('click', () => { isLooping = !isLooping; if (isLooping && !synth.speaking) togglePlayPause(); });
+                btnRec.addEventListener('click', toggleRec);
+                btnTimer.addEventListener('click', () => { if (timerInterval) { clearInterval(timerInterval); timerInterval = null; timerDisplay.textContent = '00:00'; } else iniciarCronometro(); });
+                btnKaraoke.addEventListener('click', () => { karaokeActivo = !karaokeActivo; btnKaraoke.classList.toggle('btn-success'); });
+
+                // ==== DROPDOWN Y MODALES ====
+                document.getElementById('dropdownBtn').addEventListener('click', e => { e.stopPropagation(); document.getElementById('dropdownMenu').classList.toggle('show'); });
+                document.addEventListener('click', () => document.getElementById('dropdownMenu').classList.remove('show'));
+                document.getElementById('btnSumula').addEventListener('click', () => document.getElementById('sumulaModal').classList.add('show'));
+                document.getElementById('closeSumulaModal').addEventListener('click', () => document.getElementById('sumulaModal').classList.remove('show'));
+                document.getElementById('cancelSumula').addEventListener('click', () => document.getElementById('sumulaModal').classList.remove('show'));
+                document.getElementById('processSumula').addEventListener('click', async () => {
+                    try {
+                        let text = '';
+                        const file = document.getElementById('fileSumulaInput').files[0];
+                        if (file) { text = await file.text(); }
+                        else if (document.getElementById('pastedTextSumula').value.trim()) { text = document.getElementById('pastedTextSumula').value; }
+                        else { alert('Sube archivo o pega texto'); return; }
+                        textarea.value = text; pushHistorial(); guardarContenido(); generarMapa();
+                        document.getElementById('sumulaModal').classList.remove('show');
+                    } catch(e) { alert('Error: ' + e.message); }
                 });
-            } else {
-                raices.forEach(r => recorrer(r.id));
+                document.getElementById('btnCorolario').addEventListener('click', () => {
+                    const corolario = `# Corolario Pedagógico: El Sendero Esencial del Iniciado\n## ¿Qué es?\n- Síntesis didáctica de las enseñanzas.\n## ¿Para qué sirve?\n- Para ser usado como guía práctica.\n## Características\n### La Fundación: El Maestro y el Naam\n#### Detalles\n- Sin un Maestro Perfecto es imposible recibir el Naam.\n##### Ejemplos\n- "El Maestro es quien tiene que dar."\n###### Conclusión del tema\n- El conocimiento se obtiene de la Gracia del Maestro.\n####### Fuentes Bibliográficas\n- Enseñanzas de Sant Sadhu Ram Ji.`;
+                    textarea.value = corolario; pushHistorial(); guardarContenido(); generarMapa();
+                });
+                document.getElementById('btnConfig').addEventListener('click', () => document.getElementById('configModal').classList.add('show'));
+                document.getElementById('closeConfigModal').addEventListener('click', () => document.getElementById('configModal').classList.remove('show'));
+                document.getElementById('saveConfig').addEventListener('click', () => { localStorage.setItem('nexus_logo', document.getElementById('logoFilename').value); document.getElementById('configModal').classList.remove('show'); });
+                document.getElementById('btnAPA').addEventListener('click', () => document.getElementById('apaModal').classList.add('show'));
+                document.getElementById('closeApaModal').addEventListener('click', () => document.getElementById('apaModal').classList.remove('show'));
+                document.getElementById('saveAPA').addEventListener('click', () => { localStorage.setItem('nexus_apa', JSON.stringify({ author: document.getElementById('apaAuthor').value, title: document.getElementById('apaTitle').value, date: document.getElementById('apaDate').value })); document.getElementById('apaModal').classList.remove('show'); });
+
+                // ==== EXPORTACIONES ====
+                function descargarArchivo(blob, nombre) { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = nombre; a.click(); }
+                document.getElementById('exportarHtml').addEventListener('click', () => {
+                    const texto = textarea.value; if (!texto) return;
+                    const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>${tituloDin.textContent}</title><style>body{font-family:sans-serif;padding:20px}.card-nodo{border-left:5px solid #3498db;padding:10px;margin-bottom:5px;cursor:pointer}.nodo-hijos{margin-left:20px;border-left:2px dashed #ccc;padding-left:10px}.collapsed{display:none}</style></head><body><div id="mapa"></div><script>const t=${JSON.stringify(texto)};function parsear(t){const l=t.split("\\n");let p=[],id=1,n=[];for(let i of l){i=i.trim();if(!i)continue;let v=-1,e=i;if(i.startsWith("# "))v=0,e=i.slice(2);else if(i.startsWith("## "))v=1,e=i.slice(3);else if(i.startsWith("### "))v=2,e=i.slice(4);else if(i.startsWith("- ")){v=p.length?p[p.length-1].v+1:1;e=i.slice(2)}else{v=p.length?p[p.length-1].v+1:1;e=i}while(p.length&&p[p.length-1].v>=v)p.pop();const pId=p.length?p[p.length-1].id:null;n.push({id,v,e,pId});p.push({id: id++,v})}const h=new Map();n.forEach(x=>h.set(x.id,[]));n.forEach(x=>{if(x.pId)h.get(x.pId).push(x.id)});return{n,h,r:n.filter(x=>x.pId===null)}}const d=parsear(t);function construir(id){const x=d.n.find(y=>y.id===id);if(!x)return null;const c=document.createElement("div");c.className="card-nodo";c.innerHTML=x.e;const h=d.h.get(id)||[];if(h.length){const cc=document.createElement("div");cc.className="nodo-hijos collapsed";h.forEach(y=>{const z=construir(y);if(z)cc.appendChild(z)});c.appendChild(cc);c.onclick=()=>cc.classList.toggle("collapsed")}return c}const m=document.getElementById("mapa");d.r.forEach(r=>m.appendChild(construir(r.id)))</script></body></html>`;
+                    descargarArchivo(new Blob([html], {type:'text/html'}), 'documento.html');
+                });
+                document.getElementById('exportarTree').addEventListener('click', () => { descargarArchivo(new Blob([textarea.value], {type:'text/plain'}), 'arbol.txt'); });
+                document.getElementById('exportarTxt').addEventListener('click', () => { descargarArchivo(new Blob([textarea.value], {type:'text/plain'}), 'contenido.txt'); });
+                document.getElementById('exportarMd').addEventListener('click', () => { descargarArchivo(new Blob([textarea.value], {type:'text/markdown'}), 'contenido.md'); });
+                document.getElementById('exportarTxtEnriquecido').addEventListener('click', () => { descargarArchivo(new Blob([textarea.value], {type:'text/plain'}), 'enriquecido.txt'); });
+                document.getElementById('vistaPreviaHtml').addEventListener('click', () => { document.getElementById('exportarHtml').click(); });
+                document.getElementById('publicarVercel').addEventListener('click', () => { document.getElementById('exportarHtml').click(); });
+
+                // ==== INICIALIZACIÓN ====
+                cargarContenido(); aplicarTema(); pushHistorial(); generarMapa();
+                setInterval(() => { if (textarea.value !== historial[historialPos]) { pushHistorial(); guardarContenido(); } }, 2000);
+            } catch (e) {
+                console.error("Error de inicialización:", e);
+                document.getElementById('contenido').value = "# Error\n\n" + e.message;
             }
-            function recorrer(id) {
-                const nodo = nodosMap.get(id);
-                if (nodo) { textoFinal.push(nodo.etiqueta); (hijosMap.get(id)||[]).forEach(recorrer); }
-            }
-            return textoFinal;
-        }
-
-        function leerSiguienteItem() {
-            if (currentReadingList.length === 0) { currentReadingSpan.textContent = 'Lista vacía.'; btnPlayPause.textContent = '▶'; return; }
-            if (currentReadingIndex >= currentReadingList.length) {
-                if (isLooping) { currentReadingIndex = 0; leerSiguienteItem(); }
-                else { stopReading(); currentReadingSpan.textContent = 'Lectura finalizada.'; }
-                return;
-            }
-            const texto = currentReadingList[currentReadingIndex];
-            const textoLimpio = limpiarTextoParaVoz(texto);
-            if (!textoLimpio) { currentReadingIndex++; leerSiguienteItem(); return; }
-            if (utterance) synth.cancel();
-            utterance = new SpeechSynthesisUtterance(textoLimpio);
-            const voces = synth.getVoices().filter(v => v.lang.startsWith('es'));
-            if (voces.length > 0) utterance.voice = voces[parseInt(voiceSelect.value)] || voces[0];
-            utterance.rate = parseFloat(rateRange.value) || 0.9;
-            utterance.pitch = parseFloat(pitchRange.value) || 1;
-
-            // Lógica de karaoke
-            if (karaokeActivo) {
-                let span = document.querySelector(`span[data-id="${currentReadingList.indexOf(texto)}"]`);
-                if (span) {
-                    span.classList.add('highlight-word');
-                    currentSpan = span;
-                }
-                // Simulación de palabras (para navegadores sin soporte onboundary)
-                palabrasArray = textoLimpio.split(/\s+/);
-                currentPalabraIndex = 0;
-            }
-
-            utterance.onboundary = (event) => {
-                if (karaokeActivo && event.name === 'word') {
-                    // Intentamos resaltar palabra a palabra dentro del nodo (complejo)
-                    // Por simplicidad, resaltamos el nodo completo mientras se lee
-                }
-            };
-
-            utterance.onend = () => { currentReadingIndex++; leerSiguienteItem(); };
-            synth.speak(utterance);
-            currentReadingSpan.textContent = `Leyendo: "${textoLimpio.substring(0, 30)}..."`;
-            if (!timerInterval) iniciarCronometro();
-        }
-
-        function prepararLecturaDesdeNodo(idNodo) {
-            if (selectedIds.size === 0) {
-                currentReadingList = [];
-                const { nodos, hijosMap } = parsear(textarea.value);
-                const nodosMap = new Map(nodos.map(n => [n.id, n]));
-                function recorrer(id) { const n = nodosMap.get(id); if (!n) return; currentReadingList.push(n.etiqueta); (hijosMap.get(id)||[]).forEach(recorrer); }
-                if (nodosMap.has(idNodo)) recorrer(idNodo);
-                else currentReadingList = obtenerTextoSeleccionado();
-            } else {
-                currentReadingList = obtenerTextoSeleccionado();
-            }
-            currentReadingIndex = 0;
-            leerSiguienteItem();
-        }
-
-        function togglePlayPause() {
-            if (synth.speaking && !synth.paused) {
-                synth.pause(); btnPlayPause.textContent = '▶'; btnPause.style.display = 'inline-block'; currentReadingSpan.textContent = 'Pausado';
-                // Pausar cronómetro
-                if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
-            } else if (synth.paused) {
-                synth.resume(); btnPlayPause.textContent = '⏸'; btnPause.style.display = 'none'; currentReadingSpan.textContent = 'Reanudando...';
-                // Reanudar cronómetro
-                if (!timerInterval) iniciarCronometro();
-            } else {
-                if (!currentNodoId) { const { raices } = parsear(textarea.value); if (raices.length) currentNodoId = raices[0].id; }
-                prepararLecturaDesdeNodo(currentNodoId);
-                btnPlayPause.textContent = '⏸';
-            }
-        }
-
-        function stopReading() {
-            synth.cancel(); utterance = null; isPaused = false; isLooping = false;
-            btnPlayPause.textContent = '▶'; btnPause.style.display = 'none'; btnLoop.textContent = '🔁';
-            currentReadingSpan.textContent = 'Detenido.';
-            if (timerInterval) { clearInterval(timerInterval); timerInterval = null; timerDisplay.textContent = '00:00'; }
-            if (currentSpan) { currentSpan.classList.remove('highlight-word'); currentSpan = null; }
-        }
-
-        function iniciarCronometro() {
-            if (timerInterval) return;
-            startTime = Date.now();
-            timerInterval = setInterval(() => {
-                elapsedSeconds = Math.floor((Date.now() - startTime) / 1000);
-                timerDisplay.textContent = new Date(elapsedSeconds * 1000).toISOString().substring(14, 19);
-            }, 1000);
-        }
-
-        function calcularTiempoEstimado() {
-            let texto = obtenerTextoSeleccionado().join(' ');
-            const palabras = texto.trim().split(/\s+/).length;
-            const wpm = 175;
-            const minutos = (palabras / wpm) * (0.9 / parseFloat(rateRange.value || 0.9));
-            const segundos = Math.round(minutos * 60);
-            estimatedTime.textContent = `Tiempo estimado: ${Math.floor(segundos/60)}m ${String(segundos%60).padStart(2,'0')}s (${palabras} palabras)`;
-        }
-
-        // ============================ GRABACIÓN DE AUDIO ============================
-        async function toggleRec() {
-            if (!isRecording) {
-                try {
-                    const stream = await navigator.mediaDevices.getDisplayMedia({ audio: true, video: false });
-                    mediaRecorder = new MediaRecorder(stream);
-                    audioChunks = [];
-                    mediaRecorder.ondataavailable = e => { audioChunks.push(e.data); };
-                    mediaRecorder.onstop = () => {
-                        const blob = new Blob(audioChunks, { type: mediaRecorder.mimeType });
-                        const url = URL.createObjectURL(blob);
-                        const a = document.createElement('a');
-                        a.href = url; a.download = `audio_${Date.now()}.${mediaRecorder.mimeType.includes('mp4') ? 'mp4' : 'webm'}`;
-                        a.click(); URL.revokeObjectURL(url);
-                        isRecording = false; btnRec.innerHTML = '<i class="fas fa-circle"></i>'; btnRec.classList.remove('recording-dot');
-                    };
-                    mediaRecorder.start();
-                    isRecording = true;
-                    btnRec.innerHTML = '<i class="fas fa-square"></i>'; btnRec.classList.add('recording-dot');
-                    alert("Grabación iniciada. Asegúrate de seleccionar la pestaña/ventana y activar el audio. Para detener, pulsa de nuevo el botón.");
-                } catch (e) {
-                    alert("Tu navegador no soporta la grabación de audio de pestaña.");
-                }
-            } else {
-                if (mediaRecorder) mediaRecorder.stop();
-            }
-        }
-
-        // ============================ EVENTOS PRINCIPALES ============================
-        let timeoutId;
-        textarea.addEventListener('input', () => { clearTimeout(timeoutId); timeoutId = setTimeout(() => { pushHistorial(); guardarContenido(); generarMapa(); }, 300); });
-        searchInput.addEventListener('input', generarMapa);
-        clearSearchBtn.addEventListener('click', () => { searchInput.value = ''; generarMapa(); });
-        document.getElementById('expandirTodo').addEventListener('click', () => { document.querySelectorAll('#mapa .nodo-hijos').forEach(c => c.classList.remove('collapsed')); document.querySelectorAll('#mapa .icono-toggle').forEach(i => i.textContent = '▼'); });
-        document.getElementById('colapsarTodo').addEventListener('click', () => { document.querySelectorAll('#mapa .nodo-hijos').forEach(c => c.classList.add('collapsed')); document.querySelectorAll('#mapa .icono-toggle').forEach(i => i.textContent = '▶'); });
-        document.querySelectorAll('.btn-fullscreen').forEach(btn => { btn.addEventListener('click', () => { const p = document.getElementById(btn.dataset.target); p.classList.toggle('fullscreen-panel'); const otro = p.id === 'panelEditor' ? 'panelMapa' : 'panelEditor'; document.getElementById(otro).style.display = p.classList.contains('fullscreen-panel') ? 'none' : ''; }); });
-        document.getElementById('btnUndo').addEventListener('click', undo);
-        document.getElementById('btnRedo').addEventListener('click', redo);
-        document.getElementById('btnTheme').addEventListener('click', toggleTema);
-
-        // Controles de audio
-        btnPlayPause.addEventListener('click', togglePlayPause);
-        btnPause.addEventListener('click', () => { synth.pause(); btnPlayPause.textContent = '▶'; btnPause.style.display = 'none'; currentReadingSpan.textContent = 'Pausado'; if (timerInterval) { clearInterval(timerInterval); timerInterval = null; } });
-        btnStop.addEventListener('click', stopReading);
-        btnLoop.addEventListener('click', () => { isLooping = !isLooping; btnLoop.textContent = isLooping ? '🔁✅' : '🔁'; if (isLooping && !synth.speaking) togglePlayPause(); });
-        btnRec.addEventListener('click', toggleRec);
-        btnTimer.addEventListener('click', () => { if (timerInterval) { clearInterval(timerInterval); timerInterval = null; timerDisplay.textContent = '00:00'; } else iniciarCronometro(); });
-        rateRange.addEventListener('input', calcularTiempoEstimado);
-        pitchRange.addEventListener('input', () => {});
-        btnKaraoke.addEventListener('click', () => { karaokeActivo = !karaokeActivo; btnKaraoke.classList.toggle('btn-success'); btnKaraoke.classList.toggle('btn-outline-success'); });
-
-        // Dropdown y modales
-        document.getElementById('dropdownBtn').addEventListener('click', e => { e.stopPropagation(); document.getElementById('dropdownMenu').classList.toggle('show'); });
-        document.addEventListener('click', () => document.getElementById('dropdownMenu').classList.remove('show'));
-        
-        const configModal = document.getElementById('configModal');
-        document.getElementById('btnConfig').addEventListener('click', () => { document.getElementById('logoFilename').value = localStorage.getItem('nexus_logo') || ''; configModal.classList.add('show'); });
-        document.getElementById('closeConfigModal').addEventListener('click', () => configModal.classList.remove('show'));
-        document.getElementById('saveConfig').addEventListener('click', () => { localStorage.setItem('nexus_logo', document.getElementById('logoFilename').value); configModal.classList.remove('show'); });
-        const apaModal = document.getElementById('apaModal');
-        document.getElementById('btnAPA').addEventListener('click', () => { cargarAPA(); apaModal.classList.add('show'); });
-        document.getElementById('closeApaModal').addEventListener('click', () => apaModal.classList.remove('show'));
-        document.getElementById('saveAPA').addEventListener('click', () => { guardarAPA(); apaModal.classList.remove('show'); });
-
-        // ============================ SÚMULA Y COROLARIO ============================
-        const sumulaModal = document.getElementById('sumulaModal');
-        document.getElementById('btnSumula').addEventListener('click', () => { sumulaModal.classList.add('show'); });
-        document.getElementById('closeSumulaModal').addEventListener('click', () => sumulaModal.classList.remove('show'));
-        document.getElementById('cancelSumula').addEventListener('click', () => sumulaModal.classList.remove('show'));
-        document.getElementById('processSumula').addEventListener('click', async () => {
-            document.getElementById('sumulaLoading').style.display = 'block';
-            try {
-                let textToConvert = '';
-                const file = document.getElementById('fileSumulaInput').files[0];
-                const pasted = document.getElementById('pastedTextSumula').value;
-                if (file) {
-                    const type = file.name.split('.').pop().toLowerCase();
-                    if (type === 'pdf') { const arr = await file.arrayBuffer(); const pdf = await pdfjsLib.getDocument({ data: arr }).promise; let txt = ''; for (let i=1; i<=pdf.numPages; i++) { const page = await pdf.getPage(i); const tc = await page.getTextContent(); txt += tc.items.map(x=>x.str).join(' ') + '\n'; } textToConvert = txt; }
-                    else if (type === 'docx') { const arr = await file.arrayBuffer(); const res = await mammoth.extractRawText({ arrayBuffer: arr }); textToConvert = res.value; }
-                    else { textToConvert = await file.text(); }
-                } else if (pasted.trim()) { textToConvert = pasted; }
-                else { alert('Sube un archivo o pega texto'); return; }
-                // Conversión simple
-                let resultado = textToConvert; // Aquí se puede mejorar con lógica
-                textarea.value = resultado; pushHistorial(); guardarContenido(); generarMapa();
-                sumulaModal.classList.remove('show');
-                setTimeout(() => alert('✅ Texto cargado.'), 100);
-            } catch(e) { console.error(e); alert('Error al procesar'); }
-            finally { document.getElementById('sumulaLoading').style.display = 'none'; }
-        });
-
-        const COROLARIO_PLANTILLA = `# Corolario Pedagógico: El Sendero Esencial del Iniciado
-## ¿Qué es?
-- Síntesis didáctica y depurada de las enseñanzas de Sant Sadhu Ram Ji.
-## ¿Para qué sirve?
-- Para ser usado como guía práctica diaria y material de estudio.
-## Características
-### La Fundación: El Maestro Viviente y el Naam
-#### Detalles
-- Dios reside en el interior. Sin un Maestro Perfecto es imposible recibir el Naam.
-##### Ejemplos
-- "Si el niño tiene un libro, ¿para qué ir a donde un profesor? El Maestro es quien tiene que dar."
-###### Conclusión del tema
-- El conocimiento se obtiene de la Gracia del Maestro.
-####### Fuentes Bibliográficas
-- Enseñanzas de Sant Sadhu Ram Ji.
-### La Meta: Humildad y Gracia
-#### Detalles
-- El Gurumukh considera a los demás mejores que sí.
-##### Ejemplos
-- "Recorrí el mundo buscando a una mala persona, y miré en mi interior y vi que no existe nadie peor que yo."
-###### Conclusión del tema
-- La cima es la entrega total y la humildad.
-####### Fuentes Bibliográficas
-- Enseñanzas de Sant Sadhu Ram Ji.`;
-
-        document.getElementById('btnCorolario').addEventListener('click', () => {
-            if (confirm("¿Reemplazar el contenido con el Corolario?")) { textarea.value = COROLARIO_PLANTILLA; pushHistorial(); guardarContenido(); generarMapa(); }
-        });
-
-        // ============================ EXPORTAR HTML (con controles mejorados) ============================
-        function descargarArchivo(blob, nombre) { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = nombre; a.click(); URL.revokeObjectURL(a.href); }
-        function obtenerTitulo() { return tituloDin.textContent || 'Centro'; }
-
-        document.getElementById('exportarHtml').addEventListener('click', () => {
-            const texto = textarea.value; if (!texto.trim()) return;
-            const logo = localStorage.getItem('nexus_logo') || '';
-            const titulo = obtenerTitulo();
-            const htmlParts = [
-                '<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>', titulo, '</title><style>',
-                ':root{--bg:#f4f7fc;--surface:#fff;--text:#212529;--border-light:#dee2e6;--nodo-bg:white;--nodo-hover-bg:#f8faff;--level-0-bg:#fef5e7;--level-0-border:#e67e22;--level-1-border:#3498db;--level-2-border:#2ecc71;--level-3-border:#9b59b6;--level-4-border:#e74c3c;}',
-                'body.dark-theme{--bg:#1e1e2e;--surface:#2a2a3c;--text:#e0e0e0;--border-light:#3a3a4c;--nodo-bg:#2a2a3c;--nodo-hover-bg:#35355a;--level-0-bg:#3d2e1c;--level-0-border:#f0a04b;}',
-                'body{font-family:"Segoe UI",Roboto,sans-serif;padding:20px;background:var(--bg);color:var(--text);}',
-                '.logo{max-height:60px;} .search-box{display:flex;align-items:center;background:var(--surface);border-radius:20px;padding:4px 8px;border:1px solid var(--border-light);margin-bottom:8px;}',
-                '.card-nodo{border-left:5px solid;padding:10px 16px;margin-bottom:10px;cursor:pointer;background:var(--nodo-bg);border-radius:12px;box-shadow:0 1px 4px rgba(0,0,0,0.04);}',
-                '.level-0{border-left-color:var(--level-0-border);background:var(--level-0-bg);} .level-1{border-left-color:var(--level-1-border);} .level-2{border-left-color:var(--level-2-border);} .level-3{border-left-color:var(--level-3-border);} .level-4{border-left-color:var(--level-4-border);}',
-                '.nodo-titulo{font-weight:600;display:flex;justify-content:space-between;align-items:center;} .nodo-hijos{margin-left:28px;padding-left:16px;border-left:2px dashed var(--border-light);margin-top:8px;} .collapsed{display:none;} .icono-toggle{font-size:0.9rem;opacity:0.6;margin-left:12px;}',
-                '.reader-panel{background:var(--surface);border-radius:12px;padding:8px 12px;margin-bottom:8px;display:flex;align-items:center;gap:8px;}',
-                '.toolbar-export{display:flex;gap:6px;margin-bottom:12px;} .btn-export{background:#f8f9fa;color:#212529;border:1px solid #ccc;border-radius:20px;padding:4px 12px;cursor:pointer;font-family:inherit;font-size:0.85rem;} .btn-dark-export{background:#212529;color:white;border:none;border-radius:20px;padding:4px 12px;cursor:pointer;font-family:inherit;font-size:0.85rem;} body.dark-theme .btn-export{background:#333;color:#fff;border-color:#555;} body.dark-theme .btn-dark-export{background:#f8f9fa;color:#212529;}',
-                '.highlight-word { background-color: #ffeb3b; color: #000; }',
-                '</style></head><body>', logo ? '<img src="'+logo+'" class="logo">' : '', '<h2>'+titulo+'</h2>',
-                '<div class="toolbar-export"><button id="btnExpandirAll" class="btn-export">Expandir Todo</button><button id="btnColapsarAll" class="btn-export">Colapsar Todo</button><button id="btnThemeExport" class="btn-dark-export">🌙 Modo Oscuro</button></div>',
-                '<div class="reader-panel"><button id="btnPlayPause">▶</button><button id="btnPause" style="display:none;">⏸</button><button id="btnStop">⏹</button><button id="btnLoop">🔁</button><select id="voiceSelect" class="form-select" style="width:auto;"></select><span id="currentReading">Listo</span></div>',
-                '<div class="search-box"><input type="text" id="searchInput" placeholder="Buscar..."><button id="clearSearch">✕</button></div>',
-                '<div id="mapa"></div>', '<script type="text/plain" id="content">' + texto + '<\/script>',
-                '<script>',
-                '(function(){const texto=document.getElementById("content").textContent;',
-                'function parsear(texto){' + parsearBody + '} const {nodos,hijosMap,raices}=parsear(texto); const nodosMap=new Map(nodos.map(n=>[n.id,n]));',
-                'let currentReadingList=[],currentReadingIndex=0,currentNodoId=null,synth=window.speechSynthesis,utterance=null,isLooping=false;',
-                'function construir(id){const n=nodosMap.get(id);if(!n)return null;const hijos=hijosMap.get(id)||[];const d=document.createElement("div");d.className="card-nodo level-"+Math.min(n.nivel,7);d.innerHTML=\'<div class="nodo-titulo"><span data-id="\'+id+\'">\'+n.etiqueta+\'</span></div>\';if(hijos.length){const icon=document.createElement("span");icon.className="icono-toggle";icon.textContent="▶";d.querySelector(".nodo-titulo").appendChild(icon);const cont=document.createElement("div");cont.className="nodo-hijos collapsed";hijos.forEach(h=>{const c=construir(h);if(c)cont.appendChild(c);});d.appendChild(cont);d.addEventListener("click",e=>{e.stopPropagation();cont.classList.toggle("collapsed");icon.textContent=cont.classList.contains("collapsed")?"▼":"▶";currentNodoId=id;stopReading();prepararLecturaDesdeNodo(id);});}return d;}',
-                'document.getElementById("mapa").append(...raices.map(r=>construir(r.id)).filter(Boolean));',
-                'function poblarVoces(){const voces=synth.getVoices().filter(v=>v.lang.startsWith("es"));const sel=document.getElementById("voiceSelect");sel.innerHTML="";voces.forEach((v,i)=>{const o=document.createElement("option");o.value=i;o.textContent=v.name+" ("+v.lang+")";sel.appendChild(o);});} synth.onvoiceschanged=poblarVoces;poblarVoces();',
-                'function prepararLecturaDesdeNodo(id){const lista=[];function recorrer(id){const n=nodosMap.get(id);if(!n)return;lista.push(n.etiqueta);(hijosMap.get(id)||[]).forEach(h=>recorrer(h));}if(nodosMap.has(id))recorrer(id);else raices.forEach(r=>recorrer(r.id));currentReadingList=lista;currentReadingIndex=0;}',
-                'function leerSiguiente(){if(currentReadingIndex>=currentReadingList.length){if(isLooping){currentReadingIndex=0;}else{return;}}const txt=currentReadingList[currentReadingIndex],limpio=txt.replace(/^#{1,6}\\s*/gm,"").replace(/^[-*]\\s*/gm,"");if(!limpio){currentReadingIndex++;leerSiguiente();return;}if(utterance)synth.cancel();utterance=new SpeechSynthesisUtterance(limpio);const voces=synth.getVoices().filter(v=>v.lang.startsWith("es"));if(voces.length)utterance.voice=voces[parseInt(document.getElementById("voiceSelect").value)]||voces[0];utterance.rate=0.9;utterance.pitch=1;let span=document.querySelector("span[data-id=\'"+currentReadingList.indexOf(txt)+"\']");if(span){span.classList.add("highlight-word");}utterance.onend=()=>{currentReadingIndex++;leerSiguiente();};synth.speak(utterance);}',
-                'function togglePlayPause(){if(synth.speaking&&!synth.paused){synth.pause();document.getElementById("btnPlayPause").textContent="▶";document.getElementById("btnPause").style.display="inline-block";}else if(synth.paused){synth.resume();document.getElementById("btnPlayPause").textContent="⏸";document.getElementById("btnPause").style.display="none";}else{if(!currentNodoId)currentNodoId=raices[0].id;prepararLecturaDesdeNodo(currentNodoId);leerSiguiente();document.getElementById("btnPlayPause").textContent="⏸";}}',
-                'function stopReading(){synth.cancel();utterance=null;document.getElementById("btnPlayPause").textContent="▶";document.getElementById("btnPause").style.display="none";}',
-                'document.getElementById("btnPlayPause").addEventListener("click",togglePlayPause);document.getElementById("btnStop").addEventListener("click",stopReading);document.getElementById("btnPause").addEventListener("click",()=>{synth.pause();document.getElementById("btnPlayPause").textContent="▶";document.getElementById("btnPause").style.display="none";});',
-                'document.getElementById("btnLoop").addEventListener("click",()=>{isLooping=!isLooping;if(isLooping&&!synth.speaking)togglePlayPause();});',
-                'document.getElementById("searchInput").addEventListener("input",function(){const term=this.value.toLowerCase().trim();document.querySelectorAll(".card-nodo").forEach(c=>{const ok=!term||c.textContent.toLowerCase().includes(term);c.style.display=ok?"":"none";});});',
-                'document.getElementById("clearSearch").addEventListener("click",()=>{document.getElementById("searchInput").value="";document.querySelectorAll(".card-nodo").forEach(c=>{c.style.display="";});});',
-                'let exportedDark=false;const btnExp=document.getElementById("btnExpandirAll");const btnCol=document.getElementById("btnColapsarAll");const btnDark=document.getElementById("btnThemeExport");if(btnExp)btnExp.onclick=()=>{document.querySelectorAll(".nodo-hijos").forEach(c=>c.classList.remove("collapsed"));document.querySelectorAll(".icono-toggle").forEach(i=>i.textContent="▼");};if(btnCol)btnCol.onclick=()=>{document.querySelectorAll(".nodo-hijos").forEach(c=>c.classList.add("collapsed"));document.querySelectorAll(".icono-toggle").forEach(i=>i.textContent="▶");};if(btnDark)btnDark.onclick=()=>{exportedDark=!exportedDark;document.body.classList.toggle("dark-theme",exportedDark);btnDark.innerHTML=exportedDark?"☀️ Modo Claro":"🌙 Modo Oscuro";};',
-                '})();', '<\/script></body></html>'
-            ];
-            descargarArchivo(new Blob([htmlParts.join('')], { type: 'text/html' }), `${titulo.replace(/\s+/g, '_')}.html`);
-        });
-
-        // Otras exportaciones
-        document.getElementById('exportarTxt').addEventListener('click', () => descargarArchivo(new Blob([textarea.value], {type:'text/plain'}), 'contenido.txt'));
-        document.getElementById('exportarMd').addEventListener('click', () => descargarArchivo(new Blob([textarea.value], {type:'text/markdown'}), 'contenido.md'));
-
-        // Vista previa y publicar
-        document.getElementById('vistaPreviaHtml').addEventListener('click', () => { document.getElementById('exportarHtml').click(); });
-        document.getElementById('publicarVercel').addEventListener('click', () => { document.getElementById('exportarHtml').click(); alert('HTML listo para Vercel.'); });
-
-        // Inicialización
-        cargarContenido(); aplicarTema(); cargarAPA(); pushHistorial(); generarMapa();
-        setInterval(() => { if (textarea.value !== historial[historialPos]) { pushHistorial(); guardarContenido(); } }, 2000);
-
-        // Captura de errores global
-        window.addEventListener('error', function(e) { console.error('Error capturado:', e.message); });
-    })();
+        })();
     </script>
 </body>
 </html>
