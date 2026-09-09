@@ -185,6 +185,7 @@
 
     <script>
     (function() {
+        try {
         // ==== VARIABLES GLOBALES ====
         const textarea = document.getElementById('contenido');
         const mapaDiv = document.getElementById('mapa');
@@ -328,7 +329,7 @@
             calcularTiempoEstimado();
         }
 
-        // ==== LIMPIEZA OPTIMIZADA (Elimina todos los símbolos de Markdown) ====
+        // ==== LIMPIEZA OPTIMIZADA ====
         function limpiarTexto(t) {
             return t
                 .replace(/^#{1,6}\s*/gm, '')
@@ -505,10 +506,10 @@
             } else { if (mediaRecorder) mediaRecorder.stop(); }
         }
 
-        // ==== GENERAR HTML EXPORTADO (ROBUSTO) ====
+        // ==== GENERAR HTML EXPORTADO (SIN ERRORES DE ESCAPE) ====
         function generarHTMLExportado(texto, titulo) {
-            // Usar texto plano para incrustar el contenido, evitando errores de escape
-            const contenidoIncrustado = texto.replace(/<\/script>/g, '<\\/script>');
+            // Usamos JSON.stringify para incrustar el contenido de forma 100% segura
+            const contenidoJSON = JSON.stringify(texto).replace(/</g, '\\u003c');
             const html = `<!DOCTYPE html>
 <html lang="es">
 <head>
@@ -580,7 +581,7 @@
         </div>
         <div id="karaokeBody"><p id="karaokeText"></p></div>
     </div>
-    <script type="text/plain" id="contenido-export">${contenidoIncrustado}<\/script>
+    <script type="text/plain" id="contenido-export">${contenidoJSON}<\/script>
     <script>
         const t = document.getElementById('contenido-export').textContent;
         function parsear(t){const l=t.split("\\n");let p=[],id=1,n=[];for(let i of l){i=i.trim();if(!i)continue;let v=-1,e=i;if(i.startsWith("# "))v=0,e=i.slice(2);else if(i.startsWith("## "))v=1,e=i.slice(3);else if(i.startsWith("### "))v=2,e=i.slice(4);else if(i.startsWith("#### "))v=3,e=i.slice(5);else if(i.startsWith("- ")){v=p.length?p[p.length-1].v+1:1;e=i.slice(2)}else{v=p.length?p[p.length-1].v+1:1;e=i}while(p.length&&p[p.length-1].v>=v)p.pop();const pId=p.length?p[p.length-1].id:null;n.push({id,v,e,pId});p.push({id:id++,v})}const h=new Map();n.forEach(x=>h.set(x.id,[]));n.forEach(x=>{if(x.pId)h.get(x.pId).push(x.id)});return{n,h,r:n.filter(x=>x.pId===null)}};
@@ -703,6 +704,11 @@
         cargarContenido(); aplicarTema(); pushHistorial(); generarMapa();
         setInterval(() => { if (textarea.value !== historial[historialPos]) { pushHistorial(); guardarContenido(); } }, 2000);
         window.addEventListener('error', function(e) { console.error('Error capturado:', e.message); });
+        } catch(e) {
+            console.error('Error de inicialización:', e);
+            // Si hay un error, mostrar un mensaje en el editor
+            document.getElementById('contenido').value = "# Error de carga\n\n" + e.message;
+        }
     })();
     </script>
 </body>
