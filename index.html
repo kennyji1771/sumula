@@ -11,18 +11,40 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
     <style>
         :root {
-            --bg: #f4f7fc; --surface: #ffffff; --text: #212529; --text-secondary: #6c757d;
-            --header-bg: linear-gradient(135deg, #1a2a4a, #2c3e6b); --header-text: white;
-            --border-light: #dee2e6; --editor-bg: #ffffff; --nodo-bg: white; --nodo-hover-bg: #f8faff;
-            --scrollbar-thumb: #c1c9d2; --modal-overlay: rgba(0,0,0,0.5);
-            --level-0-bg: #fef5e7; --level-0-border: #e67e22; --level-1-border: #3498db;
-            --level-2-border: #2ecc71; --level-3-border: #9b59b6; --level-4-border: #e74c3c;
-            --highlight-bg: #ffeb3b; --highlight-text: #000;
+            --bg: #f4f7fc;
+            --surface: #ffffff;
+            --text: #212529;
+            --text-secondary: #6c757d;
+            --header-bg: linear-gradient(135deg, #1a2a4a, #2c3e6b);
+            --header-text: white;
+            --border-light: #dee2e6;
+            --editor-bg: #ffffff;
+            --nodo-bg: white;
+            --nodo-hover-bg: #f8faff;
+            --scrollbar-thumb: #c1c9d2;
+            --modal-overlay: rgba(0,0,0,0.5);
+            --level-0-bg: #fef5e7;
+            --level-0-border: #e67e22;
+            --level-1-border: #3498db;
+            --level-2-border: #2ecc71;
+            --level-3-border: #9b59b6;
+            --level-4-border: #e74c3c;
+            --highlight-bg: #ffeb3b;
+            --highlight-text: #000;
         }
         body.dark-theme {
-            --bg: #1e1e2e; --surface: #2a2a3c; --text: #e0e0e0; --text-secondary: #a0a0b0;
-            --border-light: #3a3a4c; --editor-bg: #1e1e2e; --nodo-bg: #2a2a3c; --nodo-hover-bg: #35355a;
-            --level-0-bg: #3d2e1c; --level-0-border: #f0a04b; --highlight-bg: #b8860b; --highlight-text: #fff;
+            --bg: #1e1e2e;
+            --surface: #2a2a3c;
+            --text: #e0e0e0;
+            --text-secondary: #a0a0b0;
+            --border-light: #3a3a4c;
+            --editor-bg: #1e1e2e;
+            --nodo-bg: #2a2a3c;
+            --nodo-hover-bg: #35355a;
+            --level-0-bg: #3d2e1c;
+            --level-0-border: #f0a04b;
+            --highlight-bg: #b8860b;
+            --highlight-text: #fff;
         }
         * { transition: background-color 0.25s, color 0.25s; }
         body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', Roboto, system-ui, sans-serif; margin: 0; min-height: 100vh; }
@@ -65,7 +87,10 @@
         .node-select { margin-right: 8px; transform: scale(1.2); cursor: pointer; }
         .highlight-word { background: var(--highlight-bg); color: var(--highlight-text); border-radius: 3px; font-weight: bold; }
         .timer-display { font-family: monospace; font-weight: bold; }
-        /* Estilos para el modal de karaoke */
+        .btn-fullscreen { position: absolute; top: 8px; right: 8px; background: rgba(0,0,0,0.1); border: none; border-radius: 50%; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--text-secondary); z-index: 10; }
+        .btn-fullscreen:hover { background: rgba(0,0,0,0.2); }
+        .fullscreen-panel { position: fixed !important; top: 0; left: 0; width: 100vw !important; height: 100vh !important; z-index: 2000; border-radius: 0 !important; padding: 20px !important; }
+        /* Modal Karaoke */
         #karaokeModal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--surface); z-index: 2000; }
         #karaokeModal.show { display: flex; flex-direction: column; }
         #karaokeHeader { display: flex; justify-content: space-between; align-items: center; padding: 10px 20px; background: var(--header-bg); color: white; }
@@ -120,11 +145,13 @@
         <div class="row g-3">
             <div class="col-lg-6" id="panelEditor">
                 <div class="editor-area">
+                    <button class="btn-fullscreen" data-target="panelEditor"><i class="fas fa-expand"></i></button>
                     <textarea id="contenido" spellcheck="false"></textarea>
                 </div>
             </div>
             <div class="col-lg-6" id="panelMapa">
                 <div class="mapa-area">
+                    <button class="btn-fullscreen" data-target="panelMapa"><i class="fas fa-expand"></i></button>
                     <div class="search-box">
                         <i class="fas fa-search"></i>
                         <input type="text" id="searchInput" placeholder="Buscar en mapa...">
@@ -216,6 +243,7 @@
         const karaokeTitle = document.getElementById('karaokeTitle');
         const closeKaraoke = document.getElementById('closeKaraoke');
 
+        // Variables de estado
         let synth = window.speechSynthesis;
         let utterance = null;
         let isLooping = false;
@@ -223,7 +251,7 @@
         let mediaRecorder = null;
         let audioChunks = [];
         let timerInterval = null;
-        let elapsedSeconds = 0;
+        let elapsedSeconds = 0; // Acumulador de tiempo
         let currentReadingList = [];
         let currentReadingIndex = 0;
         let currentNodoId = null;
@@ -272,6 +300,7 @@
         const parsearString = parsear.toString();
         const parsearBody = parsearString.slice(parsearString.indexOf('{') + 1, parsearString.lastIndexOf('}')).trim();
 
+        // Renderizar los nodos (con checkboxes)
         function renderizar(raices, nodosMap, hijosMap, searchTerm = '') {
             if (!raices.length) { mapaDiv.innerHTML = '<div class="alert alert-warning">⚠️ Usa # para la raíz.</div>'; return; }
             const contenedor = document.createElement('div');
@@ -283,11 +312,14 @@
                 if (term && !coincide) return null;
                 const card = document.createElement('div');
                 card.className = `card-nodo level-${Math.min(nodo.nivel, 7)}`;
+                
+                // Checkbox para selección (no inicia lectura)
                 const check = document.createElement('input');
                 check.type = 'checkbox'; check.className = 'node-select';
                 check.dataset.id = idNodo; check.checked = selectedIds.has(idNodo);
                 check.addEventListener('click', (e) => e.stopPropagation());
                 check.addEventListener('change', () => { if (check.checked) selectedIds.add(idNodo); else selectedIds.delete(idNodo); calcularTiempoEstimado(); });
+                
                 const tituloDiv = document.createElement('div'); tituloDiv.className = 'nodo-titulo';
                 tituloDiv.appendChild(check);
                 const span = document.createElement('span'); span.textContent = nodo.etiqueta; span.setAttribute('data-id', idNodo);
@@ -295,17 +327,22 @@
                 let icono = null;
                 if (hijos.length) { icono = document.createElement('span'); icono.className = 'icono-toggle'; icono.textContent = '▶'; tituloDiv.appendChild(icono); }
                 card.appendChild(tituloDiv);
+                
+                // Contenedor de hijos (colapsable)
                 let contHijos = null;
                 if (hijos.length) {
                     contHijos = document.createElement('div'); contHijos.className = 'nodo-hijos collapsed';
                     hijos.forEach(h => { const c = construir(h); if (c) contHijos.appendChild(c); });
                     card.appendChild(contHijos);
                 }
+                
+                // Clic SOLO expande/colapsa, NO inicia lectura
                 card.addEventListener('click', (e) => {
                     e.stopPropagation();
                     if (contHijos && icono) { contHijos.classList.toggle('collapsed'); icono.textContent = contHijos.classList.contains('collapsed') ? '▶' : '▼'; }
-                    currentNodoId = idNodo; stopReading(); prepararLecturaDesdeNodo(idNodo);
                 });
+                
+                // Doble clic edita
                 span.addEventListener('dblclick', (e) => {
                     e.stopPropagation();
                     const orig = span.textContent;
@@ -388,6 +425,8 @@
             const voces = synth.getVoices().filter(v => v.lang.startsWith('es'));
             if (voces.length) utterance.voice = voces[parseInt(voiceSelect.value)] || voces[0];
             utterance.rate = 0.9; utterance.pitch = 1;
+            
+            // Si karaoke activo, resaltar palabras
             if (karaokeModal.classList.contains('show')) {
                 mostrarKaraoke(txt);
                 utterance.onboundary = (event) => {
@@ -403,9 +442,12 @@
                     }
                 };
             }
+            
             utterance.onend = () => { currentReadingIndex++; leerSiguienteItem(); };
             synth.speak(utterance);
             currentReadingSpan.textContent = `Leyendo: "${limpio.substring(0,30)}..."`;
+            
+            // Iniciar cronómetro si no está corriendo
             if (!timerInterval) iniciarCronometro();
         }
 
@@ -417,14 +459,39 @@
             if (nodosMap.has(id)) recorrer(id);
             else currentReadingList = obtenerTextoSeleccionado();
             currentReadingIndex = 0;
-            leerSiguienteItem();
+            // No llamar a leerSiguienteItem aquí; solo preparar la lista
         }
 
+        // Control de play/pausa (con cronómetro persistente)
         function togglePlayPause() {
             try {
-                if (synth.speaking && !synth.paused) { synth.pause(); btnPlayPause.textContent = '▶'; btnPause.style.display = 'inline-block'; currentReadingSpan.textContent = 'Pausado'; if (timerInterval) { clearInterval(timerInterval); timerInterval = null; } }
-                else if (synth.paused) { synth.resume(); btnPlayPause.textContent = '⏸'; btnPause.style.display = 'none'; currentReadingSpan.textContent = 'Reanudando...'; if (!timerInterval) iniciarCronometro(); }
-                else { if (!currentNodoId) { const { raices } = parsear(textarea.value); if (raices.length) currentNodoId = raices[0].id; } prepararLecturaDesdeNodo(currentNodoId); btnPlayPause.textContent = '⏸'; }
+                if (synth.speaking && !synth.paused) {
+                    synth.pause(); 
+                    btnPlayPause.textContent = '▶'; 
+                    btnPause.style.display = 'inline-block'; 
+                    currentReadingSpan.textContent = 'Pausado';
+                    detenerCronometro(); // Pausa el cronómetro (guarda el tiempo acumulado)
+                }
+                else if (synth.paused) {
+                    synth.resume(); 
+                    btnPlayPause.textContent = '⏸'; 
+                    btnPause.style.display = 'none'; 
+                    currentReadingSpan.textContent = 'Reanudando...';
+                    iniciarCronometro(); // Reanuda desde el tiempo acumulado
+                }
+                else {
+                    if (!currentNodoId) { 
+                        const { raices } = parsear(textarea.value); 
+                        if (raices.length) currentNodoId = raices[0].id; 
+                        prepararLecturaDesdeNodo(currentNodoId);
+                    }
+                    // Si ya hay una lista preparada y estamos al inicio, comenzar
+                    if (currentReadingList.length === 0) prepararLecturaDesdeNodo(currentNodoId);
+                    currentReadingIndex = 0;
+                    leerSiguienteItem();
+                    btnPlayPause.textContent = '⏸';
+                    iniciarCronometro();
+                }
             } catch(e) { console.error('Error en togglePlayPause:', e); }
         }
 
@@ -433,18 +500,43 @@
                 synth.cancel(); utterance = null; isLooping = false;
                 btnPlayPause.textContent = '▶'; btnPause.style.display = 'none'; btnLoop.textContent = '🔁';
                 currentReadingSpan.textContent = 'Detenido.';
-                if (timerInterval) { clearInterval(timerInterval); timerInterval = null; timerDisplay.textContent = '00:00'; }
+                // Detener y resetear cronómetro
+                detenerCronometro();
+                elapsedSeconds = 0;
+                timerDisplay.textContent = '00:00';
                 karaokeModal.classList.remove('show');
             } catch(e) { console.error('Error en stopReading:', e); }
         }
 
+        // Cronómetro con persistencia
         function iniciarCronometro() {
             if (timerInterval) return;
             const startTime = Date.now();
             timerInterval = setInterval(() => {
-                elapsedSeconds = Math.floor((Date.now() - startTime) / 1000);
+                const current = Math.floor((Date.now() - startTime) / 1000);
+                elapsedSeconds = elapsedSecondsBase + current;
                 timerDisplay.textContent = new Date(elapsedSeconds * 1000).toISOString().substring(14, 19);
             }, 1000);
+        }
+        function detenerCronometro() {
+            if (timerInterval) {
+                // Calcular el tiempo transcurrido hasta el momento de la pausa y guardarlo
+                const current = Math.floor((Date.now() - startTime) / 1000);
+                elapsedSecondsBase = elapsedSecondsBase + current;
+                clearInterval(timerInterval);
+                timerInterval = null;
+            }
+        }
+
+        // Necesitamos estas variables para persistencia del cronómetro
+        let elapsedSecondsBase = 0;
+        let startTime = 0;
+
+        // Resetear base al iniciar desde cero
+        function resetCronometro() {
+            elapsedSeconds = 0;
+            elapsedSecondsBase = 0;
+            timerDisplay.textContent = '00:00';
         }
 
         function calcularTiempoEstimado() {
@@ -469,14 +561,13 @@
                         isRecording = false; btnRec.innerHTML = '<i class="fas fa-circle"></i>';
                     };
                     mediaRecorder.start(); isRecording = true; btnRec.innerHTML = '<i class="fas fa-square"></i>';
-                    alert("Grabación iniciada. Selecciona la pestaña y activa el audio.");
+                    alert("Grabación iniciada.");
                 } catch(e) { alert("No soportado o cancelado."); }
             } else { if (mediaRecorder) mediaRecorder.stop(); }
         }
 
-        // ==== GENERADOR DE HTML EXPORTADO (COMPLETO) ====
-        function generarHTMLExportado(texto, titulo, logo) {
-            // Esta función construye un HTML completo con todas las funcionalidades
+        // ==== EXPORTAR HTML COMPLETO (con TODAS las funciones) ====
+        function generarHTMLExportado(texto, titulo) {
             const html = `<!DOCTYPE html>
 <html lang="es">
 <head>
@@ -509,6 +600,13 @@
         .highlight-word{background:var(--highlight);color:var(--highlight-t);border-radius:3px;font-weight:bold}
         .timer-display{font-family:monospace;font-weight:bold}
         select.form-select{background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:20px;padding:4px}
+        .node-select{margin-right:8px;transform:scale(1.2);cursor:pointer}
+        /* Modal karaoke */
+        #karaokeModal{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:var(--surface);z-index:9999}
+        #karaokeModal.show{display:flex;flex-direction:column}
+        #karaokeHeader{display:flex;justify-content:space-between;align-items:center;padding:10px 20px;background:#1a2a4a;color:white}
+        #karaokeBody{flex:1;padding:40px;font-size:1.5rem;line-height:2;overflow-y:auto}
+        .karaoke-word{transition:background 0.2s}
     </style>
 </head>
 <body>
@@ -525,14 +623,23 @@
         <button class="btn-export" id="btnPause" style="display:none">⏸</button>
         <button class="btn-export" id="btnStop">⏹</button>
         <button class="btn-export" id="btnLoop">🔁</button>
+        <button class="btn-export" id="btnKaraoke">📖</button>
         <select id="voiceSelect" class="form-select"></select>
         <span class="timer-display" id="timerDisplay">00:00</span>
+        <span id="currentReading" style="font-size:12px">Listo</span>
     </div>
     <div class="search-box">
         <input type="text" id="searchInput" placeholder="Buscar...">
         <button id="clearSearch">✕</button>
     </div>
     <div id="mapa"></div>
+    <div id="karaokeModal">
+        <div id="karaokeHeader">
+            <h4 id="karaokeTitle">📖 Lectura Asistida</h4>
+            <button class="btn-close" id="closeKaraoke">&times;</button>
+        </div>
+        <div id="karaokeBody"><p id="karaokeText"></p></div>
+    </div>
     <script>
         const t = ${JSON.stringify(texto)};
         function parsear(t){
@@ -555,14 +662,21 @@
             return{n,h,r:n.filter(x=>x.pId===null)};
         }
         const d=parsear(t);
+        const selectedIds = new Set();
         function construir(id){
             const x=d.n.find(y=>y.id===id); if(!x)return null;
             const c=document.createElement("div"); c.className="card-nodo level-"+Math.min(x.v,4);
-            c.innerHTML='<div class="nodo-titulo"><span data-id="'+id+'">'+x.e+'</span></div>';
+            const check=document.createElement("input"); check.type="checkbox"; check.className="node-select"; check.dataset.id=id;
+            check.onchange=()=>{ if(check.checked)selectedIds.add(id); else selectedIds.delete(id); };
+            const titulo=document.createElement("div"); titulo.className="nodo-titulo";
+            titulo.appendChild(check);
+            const span=document.createElement("span"); span.textContent=x.e; span.dataset.id=id;
+            titulo.appendChild(span);
+            c.appendChild(titulo);
             const hijos=d.h.get(id)||[];
             if(hijos.length){
                 const icon=document.createElement("span"); icon.className="icono-toggle"; icon.textContent="▶";
-                c.querySelector(".nodo-titulo").appendChild(icon);
+                titulo.appendChild(icon);
                 const cont=document.createElement("div"); cont.className="nodo-hijos collapsed";
                 hijos.forEach(y=>{const z=construir(y); if(z)cont.appendChild(z)});
                 c.appendChild(cont);
@@ -572,32 +686,116 @@
         }
         const mapa=document.getElementById("mapa");
         d.r.forEach(r=>mapa.appendChild(construir(r.id)));
-        // Modo Oscuro
+
+        // Modo oscuro
         let dark=false; const btnDark=document.getElementById("btnThemeExport");
         btnDark.onclick=()=>{dark=!dark;document.body.classList.toggle("dark-theme",dark);btnDark.innerHTML=dark?"☀️ Modo Claro":"🌙 Modo Oscuro"};
-        // Expandir / Colapsar
-        const btnExp=document.getElementById("btnExpandirAll"), btnCol=document.getElementById("btnColapsarAll");
-        btnExp.onclick=()=>{document.querySelectorAll(".nodo-hijos").forEach(c=>c.classList.remove("collapsed"));document.querySelectorAll(".icono-toggle").forEach(i=>i.textContent="▼")};
-        btnCol.onclick=()=>{document.querySelectorAll(".nodo-hijos").forEach(c=>c.classList.add("collapsed"));document.querySelectorAll(".icono-toggle").forEach(i=>i.textContent="▶")};
-        // Voz
-        const synth=window.speechSynthesis; let utterance=null,currentReadingList=[],currentReadingIndex=0,isLooping=false;
-        function poblarVoces(){const voces=synth.getVoices().filter(v=>v.lang.startsWith("es"));const sel=document.getElementById("voiceSelect");sel.innerHTML="";voces.forEach((v,i)=>{const o=document.createElement("option");o.value=i;o.textContent=v.name;sel.appendChild(o)})}
-        synth.onvoiceschanged=poblarVoces; poblarVoces();
-        function prepararLectura(id){const lista=[];function recorrer(id){const n=d.n.find(y=>y.id===id);if(!n)return;lista.push(n.e);(d.h.get(id)||[]).forEach(recorrer)}recorrer(id);currentReadingList=lista;currentReadingIndex=0;leerSiguiente()}
-        function leerSiguiente(){if(currentReadingIndex>=currentReadingList.length){if(isLooping)currentReadingIndex=0;else return}const txt=currentReadingList[currentReadingIndex];const limpio=txt.replace(/^#{1,6}\\s*/gm,"").replace(/^[-*]\\s*/gm,"");if(utterance)synth.cancel();utterance=new SpeechSynthesisUtterance(limpio);const voces=synth.getVoices().filter(v=>v.lang.startsWith("es"));if(voces.length)utterance.voice=voces[parseInt(document.getElementById("voiceSelect").value)]||voces[0];utterance.rate=0.9;utterance.pitch=1;utterance.onend=()=>{currentReadingIndex++;leerSiguiente()};synth.speak(utterance)}
-        document.getElementById("btnPlayPause").onclick=()=>{if(synth.speaking&&!synth.paused){synth.pause();document.getElementById("btnPlayPause").textContent="▶";document.getElementById("btnPause").style.display="inline-block"}else if(synth.paused){synth.resume();document.getElementById("btnPlayPause").textContent="⏸";document.getElementById("btnPause").style.display="none"}else{prepararLectura(d.r[0].id);document.getElementById("btnPlayPause").textContent="⏸"}};
-        document.getElementById("btnPause").onclick=()=>{synth.pause();document.getElementById("btnPlayPause").textContent="▶";document.getElementById("btnPause").style.display="none"};
-        document.getElementById("btnStop").onclick=()=>{synth.cancel();document.getElementById("btnPlayPause").textContent="▶";document.getElementById("btnPause").style.display="none"};
-        document.getElementById("btnLoop").onclick=()=>{isLooping=!isLooping;if(isLooping&&!synth.speaking)prepararLectura(d.r[0].id)};
+
+        // Expandir/Colapsar
+        document.getElementById("btnExpandirAll").onclick=()=>{document.querySelectorAll(".nodo-hijos").forEach(c=>c.classList.remove("collapsed"));document.querySelectorAll(".icono-toggle").forEach(i=>i.textContent="▼")};
+        document.getElementById("btnColapsarAll").onclick=()=>{document.querySelectorAll(".nodo-hijos").forEach(c=>c.classList.add("collapsed"));document.querySelectorAll(".icono-toggle").forEach(i=>i.textContent="▶")};
+
         // Búsqueda
         document.getElementById("searchInput").oninput=function(){const term=this.value.toLowerCase().trim();document.querySelectorAll(".card-nodo").forEach(c=>{const ok=!term||c.textContent.toLowerCase().includes(term);c.style.display=ok?"":"none"})};
         document.getElementById("clearSearch").onclick=()=>{document.getElementById("searchInput").value="";document.querySelectorAll(".card-nodo").forEach(c=>c.style.display="")};
-        // Cronómetro
-        let timerInterval=null,startTime=0;
-        function iniciarTimer(){if(timerInterval)return;startTime=Date.now();timerInterval=setInterval(()=>{const s=Math.floor((Date.now()-startTime)/1000);document.getElementById("timerDisplay").textContent=new Date(s*1000).toISOString().substring(14,19)},1000)}
-        function detenerTimer(){if(timerInterval){clearInterval(timerInterval);timerInterval=null}}
-        document.getElementById("btnPlayPause").onclick=()=>{if(synth.speaking&&!synth.paused){synth.pause();document.getElementById("btnPlayPause").textContent="▶";document.getElementById("btnPause").style.display="inline-block";detenerTimer()}else if(synth.paused){synth.resume();document.getElementById("btnPlayPause").textContent="⏸";document.getElementById("btnPause").style.display="none";iniciarTimer()}else{prepararLectura(d.r[0].id);document.getElementById("btnPlayPause").textContent="⏸";iniciarTimer()}};
-        // (El resto de funciones no se incluyen por brevedad, pero se mantienen)
+
+        // Voz y karaoke
+        const synth=window.speechSynthesis; let utterance=null,currentReadingList=[],currentReadingIndex=0,isLooping=false,karaokeWords=[];
+        function poblarVoces(){const voces=synth.getVoices().filter(v=>v.lang.startsWith("es"));const sel=document.getElementById("voiceSelect");sel.innerHTML="";voces.forEach((v,i)=>{const o=document.createElement("option");o.value=i;o.textContent=v.name;sel.appendChild(o)})}
+        synth.onvoiceschanged=poblarVoces; poblarVoces();
+
+        function obtenerTextoSeleccionado(){
+            let textoFinal=[];
+            function recorrer(id){const x=d.n.find(y=>y.id===id);if(!x)return;textoFinal.push(x.e);(d.h.get(id)||[]).forEach(recorrer);}
+            if(selectedIds.size>0){Array.from(selectedIds).forEach(id=>{const x=d.n.find(y=>y.id===id);if(x){textoFinal.push(x.e);(d.h.get(id)||[]).forEach(recorrer)}});}
+            else d.r.forEach(r=>recorrer(r.id));
+            return textoFinal;
+        }
+
+        function mostrarKaraoke(texto){
+            const modal=document.getElementById("karaokeModal");
+            modal.classList.add("show");
+            document.getElementById("karaokeTitle").textContent="📖 Leyendo: "+(texto.length>50?texto.substring(0,50)+"...":texto);
+            const body=document.getElementById("karaokeText"); body.innerHTML="";
+            const palabras=texto.replace(/^#{1,6}\\s*/gm,"").replace(/^[-*]\\s*/gm,"").split(/\\s+/);
+            karaokeWords=[];
+            palabras.forEach((pal,idx)=>{const s=document.createElement("span");s.textContent=pal;s.id="kw-"+idx;s.className="karaoke-word";body.appendChild(s);body.appendChild(document.createTextNode(" "));karaokeWords.push(s);});
+        }
+
+        function leerSiguiente(){
+            if(currentReadingIndex>=currentReadingList.length){if(isLooping)currentReadingIndex=0;else{stopReading();return;}}
+            const txt=currentReadingList[currentReadingIndex];
+            const limpio=txt.replace(/^#{1,6}\\s*/gm,"").replace(/^[-*]\\s*/gm,"");
+            if(utterance)synth.cancel();
+            utterance=new SpeechSynthesisUtterance(limpio);
+            const voces=synth.getVoices().filter(v=>v.lang.startsWith("es"));
+            if(voces.length)utterance.voice=voces[parseInt(document.getElementById("voiceSelect").value)]||voces[0];
+            utterance.rate=0.9;utterance.pitch=1;
+            if(document.getElementById("karaokeModal").classList.contains("show")){
+                mostrarKaraoke(txt);
+                utterance.onboundary=(event)=>{
+                    if(event.name==='word'&&karaokeWords.length>0){
+                        let wordIndex=limpio.substring(0,event.charIndex).trim().split(/\\s+/).length-1;
+                        if(wordIndex>=0&&wordIndex<karaokeWords.length){
+                            karaokeWords[wordIndex].classList.add("highlight-word");
+                            for(let i=0;i<karaokeWords.length;i++){if(i!==wordIndex)karaokeWords[i].classList.remove("highlight-word");}
+                        }
+                    }
+                };
+            }
+            utterance.onend=()=>{currentReadingIndex++;leerSiguiente();};
+            synth.speak(utterance);
+            document.getElementById("currentReading").textContent="Leyendo: "+limpio.substring(0,30)+"...";
+        }
+
+        function prepararLectura(id){
+            currentReadingList=[];
+            function recorrer(id){const x=d.n.find(y=>y.id===id);if(!x)return;currentReadingList.push(x.e);(d.h.get(id)||[]).forEach(recorrer);}
+            if(d.n.find(y=>y.id===id))recorrer(id); else currentReadingList=obtenerTextoSeleccionado();
+            currentReadingIndex=0;
+        }
+
+        // Cronómetro persistente
+        let timerInterval=null, elapsedBase=0, startTime=0;
+        function iniciarTimer(){
+            if(timerInterval)return;
+            startTime=Date.now();
+            timerInterval=setInterval(()=>{
+                const current=Math.floor((Date.now()-startTime)/1000);
+                const total=elapsedBase+current;
+                document.getElementById("timerDisplay").textContent=new Date(total*1000).toISOString().substring(14,19);
+            },1000);
+        }
+        function detenerTimer(){
+            if(timerInterval){
+                const current=Math.floor((Date.now()-startTime)/1000);
+                elapsedBase+=current;
+                clearInterval(timerInterval); timerInterval=null;
+            }
+        }
+
+        document.getElementById("btnPlayPause").onclick=()=>{
+            if(synth.speaking&&!synth.paused){synth.pause();document.getElementById("btnPlayPause").textContent="▶";document.getElementById("btnPause").style.display="inline-block";detenerTimer();}
+            else if(synth.paused){synth.resume();document.getElementById("btnPlayPause").textContent="⏸";document.getElementById("btnPause").style.display="none";iniciarTimer();}
+            else{
+                if(!currentReadingList.length){const raiz=d.r[0].id;prepararLectura(raiz);currentReadingIndex=0;}
+                leerSiguiente();
+                document.getElementById("btnPlayPause").textContent="⏸";
+                iniciarTimer();
+            }
+        };
+        document.getElementById("btnPause").onclick=()=>{synth.pause();document.getElementById("btnPlayPause").textContent="▶";document.getElementById("btnPause").style.display="none";detenerTimer();};
+        document.getElementById("btnStop").onclick=()=>{synth.cancel();document.getElementById("btnPlayPause").textContent="▶";document.getElementById("btnPause").style.display="none";document.getElementById("currentReading").textContent="Detenido.";detenerTimer();elapsedBase=0;document.getElementById("timerDisplay").textContent="00:00";};
+        document.getElementById("btnLoop").onclick=()=>{isLooping=!isLooping;if(isLooping&&!synth.speaking)document.getElementById("btnPlayPause").click();};
+        document.getElementById("btnKaraoke").onclick=()=>{
+            const modal=document.getElementById("karaokeModal");
+            if(modal.classList.contains("show"))modal.classList.remove("show");
+            else{
+                if(currentReadingList.length>0&&currentReadingIndex<currentReadingList.length){mostrarKaraoke(currentReadingList[currentReadingIndex]);}
+                else alert("Inicia la reproducción para ver la lectura asistida.");
+            }
+        };
+        document.getElementById("closeKaraoke").onclick=()=>document.getElementById("karaokeModal").classList.remove("show");
     <\/script>
 </body>
 </html>`;
@@ -610,16 +808,15 @@
 
         document.getElementById('exportarHtml').addEventListener('click', () => {
             const texto = textarea.value; if (!texto.trim()) return;
-            const logo = localStorage.getItem('nexus_logo') || '';
             const titulo = obtenerTitulo();
-            const html = generarHTMLExportado(texto, titulo, logo);
+            const html = generarHTMLExportado(texto, titulo);
             descargarArchivo(new Blob([html], { type: 'text/html' }), `${titulo.replace(/\s+/g, '_')}.html`);
         });
 
         document.getElementById('vistaPreviaHtml').addEventListener('click', () => {
             const texto = textarea.value; if (!texto.trim()) return;
             const titulo = obtenerTitulo();
-            const html = generarHTMLExportado(texto, titulo, '');
+            const html = generarHTMLExportado(texto, titulo);
             const w = window.open('', '_blank');
             w.document.write(html);
             w.document.close();
@@ -649,12 +846,25 @@
         document.getElementById('btnUndo').addEventListener('click', undo);
         document.getElementById('btnRedo').addEventListener('click', redo);
         document.getElementById('btnTheme').addEventListener('click', toggleTema);
+
+        // Pantalla completa (restaurado)
+        document.querySelectorAll('.btn-fullscreen').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const panel = document.getElementById(btn.dataset.target);
+                panel.classList.toggle('fullscreen-panel');
+                btn.innerHTML = panel.classList.contains('fullscreen-panel') ? '<i class="fas fa-compress"></i>' : '<i class="fas fa-expand"></i>';
+                const otro = panel.id === 'panelEditor' ? 'panelMapa' : 'panelEditor';
+                document.getElementById(otro).style.display = panel.classList.contains('fullscreen-panel') ? 'none' : '';
+            });
+        });
+
+        // Controles de audio
         btnPlayPause.addEventListener('click', togglePlayPause);
-        btnPause.addEventListener('click', () => { synth.pause(); btnPlayPause.textContent = '▶'; btnPause.style.display = 'none'; });
+        btnPause.addEventListener('click', () => { synth.pause(); btnPlayPause.textContent = '▶'; btnPause.style.display = 'none'; detenerCronometro(); });
         btnStop.addEventListener('click', stopReading);
         btnLoop.addEventListener('click', () => { isLooping = !isLooping; btnLoop.textContent = isLooping ? '🔁✅' : '🔁'; if (isLooping && !synth.speaking) togglePlayPause(); });
         btnRec.addEventListener('click', toggleRec);
-        btnTimer.addEventListener('click', () => { if (timerInterval) { clearInterval(timerInterval); timerInterval = null; timerDisplay.textContent = '00:00'; } else iniciarCronometro(); });
+        btnTimer.addEventListener('click', () => { if (timerInterval) { detenerCronometro(); } else iniciarCronometro(); });
         btnKaraoke.addEventListener('click', () => {
             if (karaokeModal.classList.contains('show')) { karaokeModal.classList.remove('show'); }
             else { if (currentReadingList.length > 0 && currentReadingIndex < currentReadingList.length) { let texto = currentReadingList[currentReadingIndex]; mostrarKaraoke(texto); } else { alert("Inicia la reproducción para ver la lectura asistida."); } }
