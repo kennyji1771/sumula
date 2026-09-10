@@ -18,8 +18,10 @@ body{font-family:'Segoe UI',sans-serif;background:#f4f7fc;color:#333;padding:20p
 @media(max-width:768px){.grid{grid-template-columns:1fr}}
 .panel{background:white;border-radius:12px;padding:15px;box-shadow:0 2px 10px rgba(0,0,0,0.05);height:70vh;overflow-y:auto}
 textarea{width:100%;height:100%;border:none;outline:none;font-family:'Consolas',monospace;font-size:14px;resize:none;color:#212529;background:#fff}
-.node{border-left:5px solid #3498db;padding:8px 12px;margin-bottom:6px;cursor:pointer;background:#fafafa;border-radius:6px;font-size:14px}
+.node{border-left:5px solid #3498db;padding:8px 12px;margin-bottom:6px;cursor:pointer;background:#fafafa;border-radius:6px;font-size:14px;display:flex;align-items:center;gap:6px}
 .node:hover{background:#eef2f7}
+.node .node-text{flex:1}
+.node input[type=checkbox]{margin:0;transform:scale(1.15);cursor:pointer;accent-color:#3498db}
 .children{margin-left:20px;border-left:2px dashed #ddd;padding-left:10px;margin-top:6px}
 .collapsed{display:none}
 .icon{font-size:0.8rem;opacity:0.6;margin-left:8px}
@@ -31,10 +33,12 @@ textarea{width:100%;height:100%;border:none;outline:none;font-family:'Consolas',
 .btn-stop{background:#e74c3c;color:white}.btn-stop:hover{background:#c0392b}
 .btn-loop{background:#9b59b6;color:white}.btn-loop:hover{background:#8e44ad}
 .btn-loop.active{background:#8e44ad;box-shadow:inset 0 0 0 3px #fff}
+.btn-clear{background:#95a5a6;color:white;font-size:12px;padding:6px 10px}.btn-clear:hover{background:#7f8c8d}
 .voice-panel select{padding:5px 10px;border-radius:8px;border:1px solid #ccc;font-size:13px;color:#333;background:white;max-width:180px}
 .timer-display{font-family:'Consolas',monospace;font-weight:bold;font-size:16px;color:#2c3e6b;background:white;padding:4px 10px;border-radius:8px;border:1px solid #e0e6ed;min-width:60px;text-align:center}
 .timer-estimado{font-size:11px;color:#888}
 .voice-status{font-size:12px;color:#666;margin-left:auto}
+.selection-info{font-size:11px;color:#3498db;font-weight:bold}
 .dropdown{position:relative;display:inline-block}
 .dropdown-menu{display:none;position:absolute;right:0;top:100%;background:white;border:1px solid #ddd;border-radius:10px;min-width:220px;box-shadow:0 4px 12px rgba(0,0,0,0.15);z-index:1000;padding:8px 0;margin-top:5px}
 .dropdown-menu.show{display:block}
@@ -68,9 +72,12 @@ textarea{width:100%;height:100%;border:none;outline:none;font-family:'Consolas',
 <button class="btn-pause" id="btnPause" style="display:none">⏸</button>
 <button class="btn-stop" id="btnStop">⏹</button>
 <button class="btn-loop" id="btnLoop" title="Repetir en bucle">🔂</button>
+<!-- MÓDULO 5 · CRIBA -->
+<button class="btn-clear" id="btnClear" title="Limpiar selección">✕ Limpiar</button>
 <select id="voiceSelect"></select>
 <span class="timer-display" id="timerDisplay">00:00</span>
 <span class="timer-estimado" id="timerEstimado"></span>
+<span class="selection-info" id="selectionInfo"></span>
 <span class="voice-status" id="voiceStatus">Listo</span>
 </div>
 <div id="mapa"></div>
@@ -94,6 +101,9 @@ var timerDisplay=document.getElementById('timerDisplay');
 var timerEstimado=document.getElementById('timerEstimado');
 // ELEGÍA
 var btnLoop=document.getElementById('btnLoop');
+// CRIBA
+var btnClear=document.getElementById('btnClear');
+var selectionInfo=document.getElementById('selectionInfo');
 
 var synth=window.speechSynthesis;
 var utterance=null;
@@ -106,8 +116,9 @@ var cronoInicioTramo=0;
 var bucleActivo=false;
 var estadoReproductor='detenido';
 var vocesCargadas=[];
-// ✅ Contador de generación para invalidar callbacks obsoletos
 var generacion=0;
+// ✅ MÓDULO 5: Conjunto de nodos seleccionados (por su etiqueta de texto)
+var seleccionados=new Set();
 
 var ejemplo="# Acelerador de Conocimiento\n## ¿Qué es?\n- Herramienta para estructurar ideas jerárquicamente.\n## ¿Para qué sirve?\n- Planificar cursos, proyectos.\n## Características\n### Edición en tiempo real\n### Interactividad";
 textarea.value=localStorage.getItem('nexus_contenido')||ejemplo;
@@ -132,6 +143,26 @@ nodos.forEach(function(n){if(n.padreId!==null)hijosMap.get(n.padreId).push(n.id)
 return{nodos:nodos,hijosMap:hijosMap,raices:nodos.filter(function(n){return n.padreId===null;})};
 }
 
+// ✅ MÓDULO 5: Obtener texto de un nodo Y sus descendientes (para selección)
+function obtenerTextoNodoYHijos(id,resultado){
+var partes=[];
+function rec(id){
+var nodo=null;
+for(var i=0;i<resultado.nodos.length;i++){if(resultado.nodos[i].id===id){nodo=resultado.nodos[i];break;}}
+if(!nodo)return;
+partes.push(nodo.etiqueta);
+var hijos=resultado.hijosMap.get(id)||[];
+hijos.forEach(rec);
+}
+rec(id);
+return partes;
+}
+
+// ✅ MÓDULO 5: Verificar si un nodo está seleccionado por etiqueta
+function estaSeleccionado(etiqueta){
+return seleccionados.has(etiqueta);
+}
+
 // RENDERIZADOR
 function generarMapa(){
 var resultado=parsear(textarea.value);
@@ -143,7 +174,30 @@ function construir(id){
 var nodo=nodosMap.get(id);if(!nodo)return null;
 var hijos=hijosMap.get(id)||[];
 var card=document.createElement('div');card.className='node';
-var textSpan=document.createElement('span');textSpan.textContent=nodo.etiqueta;card.appendChild(textSpan);
+
+// ✅ MÓDULO 5: Checkbox de selección
+var chk=document.createElement('input');
+chk.type='checkbox';
+chk.checked=estaSeleccionado(nodo.etiqueta);
+chk.title='Seleccionar para reproducir solo este segmento';
+chk.onclick=function(e){e.stopPropagation();};
+chk.onchange=function(e){
+e.stopPropagation();
+if(chk.checked){
+seleccionados.add(nodo.etiqueta);
+}else{
+seleccionados.delete(nodo.etiqueta);
+}
+actualizarInfoSeleccion();
+calcularEstimacion();
+};
+card.appendChild(chk);
+
+var textSpan=document.createElement('span');
+textSpan.className='node-text';
+textSpan.textContent=nodo.etiqueta;
+card.appendChild(textSpan);
+
 if(hijos.length){
 var icon=document.createElement('span');icon.className='icon';icon.textContent='▶';card.appendChild(icon);
 var cont=document.createElement('div');cont.className='children collapsed';
@@ -155,6 +209,16 @@ return card;
 }
 resultado.raices.forEach(function(r){var c=construir(r.id);if(c)mapaDiv.appendChild(c);});
 calcularEstimacion();
+actualizarInfoSeleccion();
+}
+
+// ✅ MÓDULO 5: Actualizar contador de selección
+function actualizarInfoSeleccion(){
+if(seleccionados.size===0){
+selectionInfo.textContent='';
+}else{
+selectionInfo.textContent='☑ '+seleccionados.size+' seleccionado'+(seleccionados.size>1?'s':'');
+}
 }
 
 // LIMPIEZA
@@ -164,27 +228,18 @@ return t.replace(/^#{1,6}\s*/gm,'').replace(/^[-*+]\s*/gm,'').replace(/^>\s?/gm,
 
 // VOCES
 function obtenerVocesEspanol(){
-var voces=synth.getVoices();
-var es=[];
-for(var i=0;i<voces.length;i++){
-if(voces[i].lang.toLowerCase().indexOf('es')===0)es.push(voces[i]);
-}
+var voces=synth.getVoices();var es=[];
+for(var i=0;i<voces.length;i++){if(voces[i].lang.toLowerCase().indexOf('es')===0)es.push(voces[i]);}
 return es;
 }
 function poblarVoces(){
 vocesCargadas=obtenerVocesEspanol();
 voiceSelect.innerHTML='';
 if(vocesCargadas.length===0){
-var opt=document.createElement('option');
-opt.textContent='(Cargando voces...)';
-voiceSelect.appendChild(opt);
-return;
+var opt=document.createElement('option');opt.textContent='(Cargando voces...)';voiceSelect.appendChild(opt);return;
 }
 vocesCargadas.forEach(function(v,i){
-var opt=document.createElement('option');
-opt.value=i;
-opt.textContent=v.name+' ('+v.lang+')';
-voiceSelect.appendChild(opt);
+var opt=document.createElement('option');opt.value=i;opt.textContent=v.name+' ('+v.lang+')';voiceSelect.appendChild(opt);
 });
 var pref=-1;
 for(var j=0;j<vocesCargadas.length;j++){
@@ -194,11 +249,7 @@ if(n.indexOf('sabina')!==-1||n.indexOf('helena')!==-1||n.indexOf('laura')!==-1||
 if(pref>=0)voiceSelect.selectedIndex=pref;
 }
 if(synth.onvoiceschanged!==undefined)synth.onvoiceschanged=function(){poblarVoces();};
-poblarVoces();
-setTimeout(poblarVoces,100);
-setTimeout(poblarVoces,300);
-setTimeout(poblarVoces,800);
-setTimeout(poblarVoces,1500);
+poblarVoces();setTimeout(poblarVoces,100);setTimeout(poblarVoces,300);setTimeout(poblarVoces,800);setTimeout(poblarVoces,1500);
 
 function asignarVoz(u){
 vocesCargadas=obtenerVocesEspanol();
@@ -206,7 +257,6 @@ if(vocesCargadas.length===0)return false;
 var idx=parseInt(voiceSelect.value);
 if(isNaN(idx)||idx<0||idx>=vocesCargadas.length)idx=0;
 u.voice=vocesCargadas[idx];
-// ✅ Siempre asignar lang='es-ES' para evitar el error de detección
 u.lang='es-ES';
 return true;
 }
@@ -238,10 +288,24 @@ var min=Math.floor(segundosTotales/60);var seg=segundosTotales%60;
 timerEstimado.textContent='~'+min+'m '+(seg<10?'0':'')+seg+'s ('+palabras+' pal.)';
 }
 
-// PREPARAR LISTA
+// ✅ MÓDULO 5: Preparar lista respetando selección
 function prepararLista(){
 var resultado=parsear(textarea.value);
 var lista=[];
+// Si hay selección, SOLO leer los nodos seleccionados (con sus hijos)
+if(seleccionados.size>0){
+resultado.nodos.forEach(function(nodo){
+if(seleccionados.has(nodo.etiqueta)){
+// Añadir este nodo y todos sus hijos
+var textos=obtenerTextoNodoYHijos(nodo.id,resultado);
+textos.forEach(function(t){
+if(lista.indexOf(t)===-1)lista.push(t);
+});
+}
+});
+return lista;
+}
+// Sin selección: leer todo (comportamiento original)
 function recorrer(id){
 var nodo=null;
 for(var i=0;i<resultado.nodos.length;i++){if(resultado.nodos[i].id===id){nodo=resultado.nodos[i];break;}}
@@ -254,23 +318,19 @@ resultado.raices.forEach(function(r){recorrer(r.id);});
 return lista;
 }
 
-// ✅ LIMPIAR SYNTH: quitar handlers ANTES de cancelar
+// ✅ LIMPIAR SYNTH
 function limpiarSynth(){
-// Invalidar callbacks pendientes incrementando la generación
 generacion++;
 try{
 if(utterance){
-utterance.onend=null;
-utterance.onerror=null;
-utterance.onstart=null;
-utterance.onboundary=null;
+utterance.onend=null;utterance.onerror=null;utterance.onstart=null;utterance.onboundary=null;
 }
 if(synth.paused)synth.resume();
 synth.cancel();
 }catch(e){}
 }
 
-// ✅ HABLAR con generación
+// HABLAR
 function hablar(texto,onDone){
 if(vocesCargadas.length===0)vocesCargadas=obtenerVocesEspanol();
 if(vocesCargadas.length===0){
@@ -278,31 +338,21 @@ voiceStatus.textContent='⚠️ Cargando voces...';
 setTimeout(function(){hablar(texto,onDone);},400);
 return;
 }
-// Capturamos la generación actual
 limpiarSynth();
 var miGeneracion=generacion;
-
 setTimeout(function(){
-// Si ya se generó otro "hablar", abortamos
 if(miGeneracion!==generacion)return;
 if(estadoReproductor!=='leyendo')return;
 try{
 var u=new SpeechSynthesisUtterance(texto);
-if(!asignarVoz(u)){
-voiceStatus.textContent='⚠️ Sin voz disponible';
-onDone();
-return;
-}
-u.rate=0.9;
-u.pitch=1;
-u.volume=1;
+if(!asignarVoz(u)){voiceStatus.textContent='⚠️ Sin voz';onDone();return;}
+u.rate=0.9;u.pitch=1;u.volume=1;
 u.onend=function(){
 if(miGeneracion!==generacion)return;
 if(estadoReproductor!=='leyendo')return;
 onDone();
 };
 u.onerror=function(e){
-// ✅ Ignorar SIEMPRE interrupted/canceled ANTES de cualquier otra verificación
 var err=e.error||'';
 if(err==='interrupted'||err==='canceled')return;
 if(miGeneracion!==generacion)return;
@@ -345,7 +395,8 @@ var texto=listaNodos[indiceActual];
 var textoLimpio=limpiarTexto(texto);
 if(!textoLimpio){indiceActual++;leerSiguiente();return;}
 var prefijo=bucleActivo?'🔂 ':'🔊 ';
-voiceStatus.textContent=prefijo+'Leyendo ('+(indiceActual+1)+'/'+listaNodos.length+')';
+var selInfo=seleccionados.size>0?' [CRIBA]':'';
+voiceStatus.textContent=prefijo+'Leyendo ('+(indiceActual+1)+'/'+listaNodos.length+')'+selInfo;
 hablar(textoLimpio,function(){
 indiceActual++;
 leerSiguiente();
@@ -367,7 +418,6 @@ setTimeout(function(){bloqueado=false;},250);
 // PLAY
 btnPlay.addEventListener('click',function(){
 if(estadoReproductor==='leyendo'){
-// Pausar
 estadoReproductor='pausado';
 limpiarSynth();
 btnPlay.textContent='▶';
@@ -377,7 +427,6 @@ pausarCronometro();
 return;
 }
 if(estadoReproductor==='pausado'){
-// Reanudar
 estadoReproductor='leyendo';
 btnPlay.textContent='⏸';
 btnPause.style.display='none';
@@ -386,7 +435,6 @@ iniciarCronometro();
 setTimeout(function(){leerSiguiente();},250);
 return;
 }
-// Iniciar desde cero
 bloqueado=false;
 listaNodos=prepararLista();
 if(listaNodos.length===0){voiceStatus.textContent='No hay contenido';return;}
@@ -394,7 +442,8 @@ indiceActual=0;
 resetearCronometro();
 iniciarCronometro();
 estadoReproductor='leyendo';
-voiceStatus.textContent='🔊 Iniciando...';
+var selInfo=seleccionados.size>0?' (CRIBA: '+seleccionados.size+' nodos)':'';
+voiceStatus.textContent='🔊 Iniciando...'+selInfo;
 btnPlay.textContent='⏸';
 btnPause.style.display='none';
 setTimeout(function(){leerSiguiente();},250);
@@ -425,6 +474,14 @@ btnLoop.classList.toggle('active',bucleActivo);
 voiceStatus.textContent=bucleActivo?'🔂 Bucle ACTIVADO':'🔂 Bucle desactivado';
 });
 
+// ✅ MÓDULO 5: Botón Limpiar selección
+btnClear.addEventListener('click',function(){
+seleccionados.clear();
+actualizarInfoSeleccion();
+generarMapa();
+voiceStatus.textContent='✕ Selección limpiada';
+});
+
 // EVENTOS
 textarea.addEventListener('input',function(){
 if(estadoReproductor!=='detenido')detenerLectura();
@@ -435,18 +492,18 @@ generarMapa();
 
 document.getElementById('btnSumula').addEventListener('click',function(){
 var texto=prompt("Pega tu texto aquí:");
-if(texto){if(estadoReproductor!=='detenido')detenerLectura();textarea.value=texto;localStorage.setItem('nexus_contenido',texto);generarMapa();}
+if(texto){if(estadoReproductor!=='detenido')detenerLectura();textarea.value=texto;localStorage.setItem('nexus_contenido',texto);seleccionados.clear();generarMapa();}
 });
 document.getElementById('btnCorolario').addEventListener('click',function(){
 if(estadoReproductor!=='detenido')detenerLectura();
 var corolario="# Corolario Pedagógico\n## ¿Qué es?\n- Síntesis didáctica.\n## ¿Para qué sirve?\n- Guía práctica.\n## Características\n### La Fundación\n#### Detalles\n- Sin un Maestro Perfecto es imposible recibir el Naam.";
-textarea.value=corolario;localStorage.setItem('nexus_contenido',corolario);generarMapa();
+textarea.value=corolario;localStorage.setItem('nexus_contenido',corolario);seleccionados.clear();generarMapa();
 });
 document.getElementById('btnTheme').addEventListener('click',function(){
 document.body.classList.toggle('dark-theme');
 if(!document.getElementById('darkStyle')){
 var style=document.createElement('style');style.id='darkStyle';
-style.textContent='body.dark-theme{background:#1e1e2e;color:#e0e0e0}body.dark-theme .panel{background:#2a2a3c;color:#e0e0e0}body.dark-theme textarea{background:#2a2a3c;color:#e0e0e0}body.dark-theme .node{background:#333;color:#fff}body.dark-theme .node:hover{background:#444}body.dark-theme .voice-panel{background:#2a2a3c;border-color:#3a3a4c}body.dark-theme .voice-panel select{background:#333;color:#fff;border-color:#555}body.dark-theme .voice-status{color:#aaa}body.dark-theme .timer-display{background:#333;color:#fff;border-color:#555}body.dark-theme .timer-estimado{color:#aaa}body.dark-theme .dropdown-menu{background:#2a2a3c;border-color:#3a3a4c}body.dark-theme .dropdown-item{color:#e0e0e0}body.dark-theme .dropdown-item:hover{background:#35355a}';
+style.textContent='body.dark-theme{background:#1e1e2e;color:#e0e0e0}body.dark-theme .panel{background:#2a2a3c;color:#e0e0e0}body.dark-theme textarea{background:#2a2a3c;color:#e0e0e0}body.dark-theme .node{background:#333;color:#fff}body.dark-theme .node:hover{background:#444}body.dark-theme .voice-panel{background:#2a2a3c;border-color:#3a3a4c}body.dark-theme .voice-panel select{background:#333;color:#fff;border-color:#555}body.dark-theme .voice-status{color:#aaa}body.dark-theme .timer-display{background:#333;color:#fff;border-color:#555}body.dark-theme .timer-estimado{color:#aaa}body.dark-theme .dropdown-menu{background:#2a2a3c;border-color:#3a3a4c}body.dark-theme .dropdown-item{color:#e0e0e0}body.dark-theme .dropdown-item:hover{background:#35355a}body.dark-theme .selection-info{color:#6ab0ff}';
 document.head.appendChild(style);
 }
 });
@@ -474,11 +531,14 @@ html+='.btn-play{background:#2ecc71;color:white}.btn-play:hover{background:#27ae
 html+='.btn-pause{background:#f39c12;color:white}.btn-pause:hover{background:#e67e22}';
 html+='.btn-stop{background:#e74c3c;color:white}.btn-stop:hover{background:#c0392b}';
 html+='.btn-loop{background:#9b59b6;color:white}.btn-loop:hover{background:#8e44ad}.btn-loop.active{background:#8e44ad;box-shadow:inset 0 0 0 3px #fff}';
+html+='.btn-clear{background:#95a5a6;color:white;font-size:12px;padding:6px 10px}.btn-clear:hover{background:#7f8c8d}';
 html+='.btn-light{background:#f8f9fa;color:#333;border:1px solid #ccc}.btn-light:hover{background:#e9ecef}';
 html+='.timer-display{font-family:"Consolas",monospace;font-weight:bold;font-size:16px;color:#2c3e6b;background:white;padding:6px 12px;border-radius:8px;border:1px solid #e0e6ed;min-width:70px;text-align:center}';
-html+='.timer-estimado{font-size:11px;color:#888}.status{font-size:12px;color:#666;margin-left:auto}';
+html+='.timer-estimado{font-size:11px;color:#888}.status{font-size:12px;color:#666;margin-left:auto}.selection-info{font-size:11px;color:#3498db;font-weight:bold}';
 html+='select{padding:6px 10px;border-radius:8px;border:1px solid #ccc;font-size:13px;background:white}';
-html+='.node{border-left:5px solid #3498db;padding:10px 14px;margin-bottom:6px;cursor:pointer;background:white;border-radius:6px;font-size:14px;box-shadow:0 1px 3px rgba(0,0,0,0.05)}';
+html+='.node{border-left:5px solid #3498db;padding:10px 14px;margin-bottom:6px;cursor:pointer;background:white;border-radius:6px;font-size:14px;box-shadow:0 1px 3px rgba(0,0,0,0.05);display:flex;align-items:center;gap:8px}';
+html+='.node .node-text{flex:1}';
+html+='.node input[type=checkbox]{margin:0;transform:scale(1.2);cursor:pointer;accent-color:#3498db}';
 html+='.node:hover{background:#f0f5fa}.node.level-0{border-left-color:#e67e22;background:#fef5e7}';
 html+='.node.level-1{border-left-color:#3498db}.node.level-2{border-left-color:#2ecc71}.node.level-3{border-left-color:#9b59b6}.node.level-4{border-left-color:#e74c3c}';
 html+='.children{margin-left:20px;border-left:2px dashed #ddd;padding-left:12px;margin-top:6px}.collapsed{display:none}';
@@ -491,7 +551,7 @@ html+='body.dark .node{background:#2a2a3c;color:#e0e0e0}body.dark .node:hover{ba
 html+='body.dark .timer-display{background:#333;color:#fff;border-color:#555}body.dark .search-box{background:#2a2a3c;border-color:#3a3a4c}';
 html+='body.dark .search-box input{color:#e0e0e0}body.dark select{background:#333;color:#fff;border-color:#555}';
 html+='body.dark .status{color:#aaa}body.dark .timer-estimado{color:#aaa}body.dark .children{border-left-color:#3a3a4c}';
-html+='body.dark .btn-light{background:#333;color:#fff;border-color:#555}';
+html+='body.dark .btn-light{background:#333;color:#fff;border-color:#555}body.dark .selection-info{color:#6ab0ff}';
 html+='</style></head><body><div class="container">';
 html+='<div class="header"><h1>'+titulo+'</h1></div>';
 html+='<div class="toolbar">';
@@ -499,9 +559,11 @@ html+='<button class="btn-play" id="btnPlay">▶</button>';
 html+='<button class="btn-pause" id="btnPause" style="display:none">⏸</button>';
 html+='<button class="btn-stop" id="btnStop">⏹</button>';
 html+='<button class="btn-loop" id="btnLoop">🔂</button>';
+html+='<button class="btn-clear" id="btnClear">✕ Limpiar</button>';
 html+='<select id="voiceSelect"></select>';
 html+='<span class="timer-display" id="timerDisplay">00:00</span>';
 html+='<span class="timer-estimado" id="timerEstimado"></span>';
+html+='<span class="selection-info" id="selectionInfo"></span>';
 html+='<span class="status" id="status">Listo</span>';
 html+='</div>';
 html+='<div class="toolbar">';
@@ -517,15 +579,18 @@ html+='(function(){';
 html+='var raw=document.getElementById("raw-content").textContent;';
 html+='var synth=window.speechSynthesis;';
 html+='var utterance=null,listaNodos=[],indiceActual=0,bloqueado=false,bucleActivo=false,estadoReproductor="detenido";';
-html+='var cronoInterval=null,cronoSegundos=0,cronoInicioTramo=0,vocesCargadas=[],generacion=0;';
-html+='var btnPlay=document.getElementById("btnPlay"),btnPause=document.getElementById("btnPause"),btnStop=document.getElementById("btnStop"),btnLoop=document.getElementById("btnLoop");';
-html+='var voiceSelect=document.getElementById("voiceSelect"),statusEl=document.getElementById("status"),timerDisplay=document.getElementById("timerDisplay"),timerEstimado=document.getElementById("timerEstimado"),mapaDiv=document.getElementById("mapa");';
+html+='var cronoInterval=null,cronoSegundos=0,cronoInicioTramo=0,vocesCargadas=[],generacion=0,seleccionados=new Set();';
+html+='var btnPlay=document.getElementById("btnPlay"),btnPause=document.getElementById("btnPause"),btnStop=document.getElementById("btnStop"),btnLoop=document.getElementById("btnLoop"),btnClear=document.getElementById("btnClear");';
+html+='var voiceSelect=document.getElementById("voiceSelect"),statusEl=document.getElementById("status"),timerDisplay=document.getElementById("timerDisplay"),timerEstimado=document.getElementById("timerEstimado"),mapaDiv=document.getElementById("mapa"),selectionInfo=document.getElementById("selectionInfo");';
 var parserFn=parsear.toString();
 html+='var parsear='+parserFn+';';
 var limpiarFn=limpiarTexto.toString();
 html+='var limpiarTexto='+limpiarFn+';';
-html+='function prepararLista(){var res=parsear(raw);var lista=[];function rec(id){var nodo=null;for(var i=0;i<res.nodos.length;i++){if(res.nodos[i].id===id){nodo=res.nodos[i];break;}}if(!nodo)return;lista.push(nodo.etiqueta);var hijos=res.hijosMap.get(id)||[];hijos.forEach(rec);}res.raices.forEach(function(r){rec(r.id);});return lista;}';
-html+='function generarMapa(){var res=parsear(raw);var nodosMap=new Map();res.nodos.forEach(function(n){nodosMap.set(n.id,n);});var hijosMap=res.hijosMap;mapaDiv.innerHTML="";if(!res.raices.length){mapaDiv.innerHTML="<div style=\\"text-align:center;color:#999;padding:40px;\\">Sin contenido</div>";return;}function construir(id){var nodo=nodosMap.get(id);if(!nodo)return null;var hijos=hijosMap.get(id)||[];var card=document.createElement("div");card.className="node level-"+Math.min(nodo.nivel,4);var span=document.createElement("span");span.textContent=nodo.etiqueta;card.appendChild(span);if(hijos.length){var icon=document.createElement("span");icon.className="icon";icon.textContent="▶";card.appendChild(icon);var cont=document.createElement("div");cont.className="children collapsed";hijos.forEach(function(h){var c=construir(h);if(c)cont.appendChild(c);});card.appendChild(cont);card.onclick=function(e){e.stopPropagation();cont.classList.toggle("collapsed");icon.textContent=cont.classList.contains("collapsed")?"▶":"▼";};}return card;}res.raices.forEach(function(r){var c=construir(r.id);if(c)mapaDiv.appendChild(c);});calcularEstimacion();}';
+var obtenerFn=obtenerTextoNodoYHijos.toString();
+html+='var obtenerTextoNodoYHijos='+obtenerFn+';';
+html+='function prepararLista(){var res=parsear(raw);var lista=[];if(seleccionados.size>0){res.nodos.forEach(function(nodo){if(seleccionados.has(nodo.etiqueta)){var textos=obtenerTextoNodoYHijos(nodo.id,res);textos.forEach(function(t){if(lista.indexOf(t)===-1)lista.push(t);});}});return lista;}function rec(id){var nodo=null;for(var i=0;i<res.nodos.length;i++){if(res.nodos[i].id===id){nodo=res.nodos[i];break;}}if(!nodo)return;lista.push(nodo.etiqueta);var hijos=res.hijosMap.get(id)||[];hijos.forEach(rec);}res.raices.forEach(function(r){rec(r.id);});return lista;}';
+html+='function actualizarInfoSeleccion(){if(seleccionados.size===0)selectionInfo.textContent="";else selectionInfo.textContent="☑ "+seleccionados.size+" seleccionado"+(seleccionados.size>1?"s":"");}';
+html+='function generarMapa(){var res=parsear(raw);var nodosMap=new Map();res.nodos.forEach(function(n){nodosMap.set(n.id,n);});var hijosMap=res.hijosMap;mapaDiv.innerHTML="";if(!res.raices.length){mapaDiv.innerHTML="<div style=\\"text-align:center;color:#999;padding:40px;\\">Sin contenido</div>";return;}function construir(id){var nodo=nodosMap.get(id);if(!nodo)return null;var hijos=hijosMap.get(id)||[];var card=document.createElement("div");card.className="node level-"+Math.min(nodo.nivel,4);var chk=document.createElement("input");chk.type="checkbox";chk.checked=seleccionados.has(nodo.etiqueta);chk.onclick=function(e){e.stopPropagation();};chk.onchange=function(e){e.stopPropagation();if(chk.checked)seleccionados.add(nodo.etiqueta);else seleccionados.delete(nodo.etiqueta);actualizarInfoSeleccion();calcularEstimacion();};card.appendChild(chk);var sp=document.createElement("span");sp.className="node-text";sp.textContent=nodo.etiqueta;card.appendChild(sp);if(hijos.length){var icon=document.createElement("span");icon.className="icon";icon.textContent="▶";card.appendChild(icon);var cont=document.createElement("div");cont.className="children collapsed";hijos.forEach(function(h){var c=construir(h);if(c)cont.appendChild(c);});card.appendChild(cont);card.onclick=function(e){e.stopPropagation();cont.classList.toggle("collapsed");icon.textContent=cont.classList.contains("collapsed")?"▶":"▼";};}return card;}res.raices.forEach(function(r){var c=construir(r.id);if(c)mapaDiv.appendChild(c);});calcularEstimacion();actualizarInfoSeleccion();}';
 html+='function calcularEstimacion(){var lista=prepararLista();var limpio=limpiarTexto(lista.join(" "));if(!limpio){timerEstimado.textContent="";return;}var palabras=limpio.split(/\\s+/).length;var segundosTotales=Math.round((palabras/(175*0.9))*60);var min=Math.floor(segundosTotales/60);var seg=segundosTotales%60;timerEstimado.textContent="~"+min+"m "+(seg<10?"0":"")+seg+"s ("+palabras+" pal.)";}';
 html+='function obtenerVocesEspanol(){var voces=synth.getVoices();var es=[];for(var i=0;i<voces.length;i++){if(voces[i].lang.toLowerCase().indexOf("es")===0)es.push(voces[i]);}return es;}';
 html+='function poblarVoces(){vocesCargadas=obtenerVocesEspanol();voiceSelect.innerHTML="";if(vocesCargadas.length===0){var opt=document.createElement("option");opt.textContent="(Cargando voces...)";voiceSelect.appendChild(opt);return;}vocesCargadas.forEach(function(v,i){var opt=document.createElement("option");opt.value=i;opt.textContent=v.name;voiceSelect.appendChild(opt);});}';
@@ -536,12 +601,13 @@ html+='function iniciarCrono(){if(cronoInterval)return;cronoInicioTramo=Date.now
 html+='function pausarCrono(){if(!cronoInterval)return;var t=Math.floor((Date.now()-cronoInicioTramo)/1000);cronoSegundos+=t;clearInterval(cronoInterval);cronoInterval=null;timerDisplay.textContent=formatearTiempo(cronoSegundos);}';
 html+='function resetCrono(){if(cronoInterval){clearInterval(cronoInterval);cronoInterval=null;}cronoSegundos=0;cronoInicioTramo=0;timerDisplay.textContent="00:00";}';
 html+='function limpiarSynth(){generacion++;try{if(utterance){utterance.onend=null;utterance.onerror=null;utterance.onstart=null;utterance.onboundary=null;}if(synth.paused)synth.resume();synth.cancel();}catch(e){}}';
-html+='function hablar(texto,onDone){if(vocesCargadas.length===0)vocesCargadas=obtenerVocesEspanol();if(vocesCargadas.length===0){statusEl.textContent="⚠ Cargando voces...";setTimeout(function(){hablar(texto,onDone);},400);return;}limpiarSynth();var miGen=generacion;setTimeout(function(){if(miGen!==generacion)return;if(estadoReproductor!=="leyendo")return;try{var u=new SpeechSynthesisUtterance(texto);if(!asignarVoz(u)){statusEl.textContent="⚠ Sin voz";onDone();return;}u.rate=0.9;u.pitch=1;u.volume=1;u.onend=function(){if(miGen!==generacion)return;if(estadoReproductor!=="leyendo")return;onDone();};u.onerror=function(e){if(miGen!==generacion)return;var err=e.error||"";if(err==="interrupted"||err==="canceled")return;console.warn("Voz error:",err);if(estadoReproductor==="leyendo")setTimeout(function(){if(estadoReproductor==="leyendo"&&miGen===generacion)onDone();},200);};utterance=u;synth.speak(u);}catch(e){console.error(e);if(miGen===generacion)onDone();}},200);}';
-html+='function leerSiguiente(){if(bloqueado)return;if(estadoReproductor!=="leyendo")return;if(indiceActual>=listaNodos.length){if(bucleActivo){indiceActual=0;statusEl.textContent="🔂 Bucle reiniciando...";setTimeout(leerSiguiente,500);return;}estadoReproductor="detenido";statusEl.textContent="Lectura finalizada";btnPlay.textContent="▶";btnPause.style.display="none";indiceActual=0;pausarCrono();return;}var texto=listaNodos[indiceActual];var limpio=limpiarTexto(texto);if(!limpio){indiceActual++;leerSiguiente();return;}var p=bucleActivo?"🔂 ":"🔊 ";statusEl.textContent=p+"Leyendo ("+(indiceActual+1)+"/"+listaNodos.length+")";hablar(limpio,function(){indiceActual++;leerSiguiente();});}';
-html+='btnPlay.onclick=function(){if(estadoReproductor==="leyendo"){estadoReproductor="pausado";limpiarSynth();btnPlay.textContent="▶";btnPause.style.display="inline-block";statusEl.textContent="⏸ Pausado";pausarCrono();return;}if(estadoReproductor==="pausado"){estadoReproductor="leyendo";btnPlay.textContent="⏸";btnPause.style.display="none";statusEl.textContent="🔊 Reanudando...";iniciarCrono();setTimeout(function(){leerSiguiente();},250);return;}bloqueado=false;listaNodos=prepararLista();if(!listaNodos.length){statusEl.textContent="Sin contenido";return;}indiceActual=0;resetCrono();iniciarCrono();estadoReproductor="leyendo";statusEl.textContent="🔊 Iniciando...";btnPlay.textContent="⏸";btnPause.style.display="none";setTimeout(function(){leerSiguiente();},250);};';
+html+='function hablar(texto,onDone){if(vocesCargadas.length===0)vocesCargadas=obtenerVocesEspanol();if(vocesCargadas.length===0){statusEl.textContent="⚠ Cargando voces...";setTimeout(function(){hablar(texto,onDone);},400);return;}limpiarSynth();var miGen=generacion;setTimeout(function(){if(miGen!==generacion)return;if(estadoReproductor!=="leyendo")return;try{var u=new SpeechSynthesisUtterance(texto);if(!asignarVoz(u)){statusEl.textContent="⚠ Sin voz";onDone();return;}u.rate=0.9;u.pitch=1;u.volume=1;u.onend=function(){if(miGen!==generacion)return;if(estadoReproductor!=="leyendo")return;onDone();};u.onerror=function(e){var err=e.error||"";if(err==="interrupted"||err==="canceled")return;if(miGen!==generacion)return;console.warn("Voz error:",err);if(estadoReproductor==="leyendo")setTimeout(function(){if(estadoReproductor==="leyendo"&&miGen===generacion)onDone();},200);};utterance=u;synth.speak(u);}catch(e){console.error(e);if(miGen===generacion)onDone();}},200);}';
+html+='function leerSiguiente(){if(bloqueado)return;if(estadoReproductor!=="leyendo")return;if(indiceActual>=listaNodos.length){if(bucleActivo){indiceActual=0;statusEl.textContent="🔂 Bucle reiniciando...";setTimeout(leerSiguiente,500);return;}estadoReproductor="detenido";statusEl.textContent="Lectura finalizada";btnPlay.textContent="▶";btnPause.style.display="none";indiceActual=0;pausarCrono();return;}var texto=listaNodos[indiceActual];var limpio=limpiarTexto(texto);if(!limpio){indiceActual++;leerSiguiente();return;}var p=bucleActivo?"🔂 ":"🔊 ";var si=seleccionados.size>0?" [CRIBA]":"";statusEl.textContent=p+"Leyendo ("+(indiceActual+1)+"/"+listaNodos.length+")"+si;hablar(limpio,function(){indiceActual++;leerSiguiente();});}';
+html+='btnPlay.onclick=function(){if(estadoReproductor==="leyendo"){estadoReproductor="pausado";limpiarSynth();btnPlay.textContent="▶";btnPause.style.display="inline-block";statusEl.textContent="⏸ Pausado";pausarCrono();return;}if(estadoReproductor==="pausado"){estadoReproductor="leyendo";btnPlay.textContent="⏸";btnPause.style.display="none";statusEl.textContent="🔊 Reanudando...";iniciarCrono();setTimeout(function(){leerSiguiente();},250);return;}bloqueado=false;listaNodos=prepararLista();if(!listaNodos.length){statusEl.textContent="Sin contenido";return;}indiceActual=0;resetCrono();iniciarCrono();estadoReproductor="leyendo";var si=seleccionados.size>0?" (CRIBA: "+seleccionados.size+" nodos)":"";statusEl.textContent="🔊 Iniciando..."+si;btnPlay.textContent="⏸";btnPause.style.display="none";setTimeout(function(){leerSiguiente();},250);};';
 html+='btnPause.onclick=function(){if(estadoReproductor==="leyendo"){estadoReproductor="pausado";limpiarSynth();btnPlay.textContent="▶";btnPause.style.display="none";statusEl.textContent="⏸ Pausado";pausarCrono();}};';
 html+='btnStop.onclick=function(){bloqueado=true;estadoReproductor="detenido";limpiarSynth();utterance=null;indiceActual=0;listaNodos=[];btnPlay.textContent="▶";btnPause.style.display="none";statusEl.textContent="Detenido";resetCrono();setTimeout(function(){bloqueado=false;},250);};';
 html+='btnLoop.onclick=function(){bucleActivo=!bucleActivo;btnLoop.classList.toggle("active",bucleActivo);statusEl.textContent=bucleActivo?"🔂 Bucle ACTIVADO":"🔂 Bucle desactivado";};';
+html+='btnClear.onclick=function(){seleccionados.clear();actualizarInfoSeleccion();generarMapa();statusEl.textContent="✕ Selección limpiada";};';
 html+='document.getElementById("btnExpandir").onclick=function(){document.querySelectorAll(".children").forEach(function(c){c.classList.remove("collapsed");});document.querySelectorAll(".icon").forEach(function(i){i.textContent="▼";});};';
 html+='document.getElementById("btnColapsar").onclick=function(){document.querySelectorAll(".children").forEach(function(c){c.classList.add("collapsed");});document.querySelectorAll(".icon").forEach(function(i){i.textContent="▶";});};';
 html+='document.getElementById("btnTheme").onclick=function(){document.body.classList.toggle("dark");this.textContent=document.body.classList.contains("dark")?"☀ Claro":"🌙 Modo Oscuro";};';
