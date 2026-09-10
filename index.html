@@ -80,9 +80,8 @@
         var utterance = null;
         var listaNodos = [];
         var indiceActual = 0;
-        var estaPausado = false;
-        // ✅ BANDERA CRÍTICA: controla si se debe continuar leyendo
-        var canceladoManualmente = false;
+        // ✅ BANDERA PERSISTENTE: solo se resetea al iniciar nueva lectura
+        var bloqueado = false;
 
         var ejemplo = "# Acelerador de Conocimiento\n## ¿Qué es?\n- Herramienta para estructurar ideas jerárquicamente.\n## ¿Para qué sirve?\n- Planificar cursos, proyectos.\n## Características\n### Edición en tiempo real\n### Interactividad";
 
@@ -261,12 +260,14 @@
 
         // ========== MÓDULO 1: LEER SIGUIENTE ==========
         function leerSiguiente() {
-            // ✅ CRÍTICO: Si se canceló manualmente, NO continuar
-            if (canceladoManualmente) return;
+            // ✅ Si está bloqueado, no hace nada (protección anti-reinicio)
+            if (bloqueado) return;
 
             if (indiceActual >= listaNodos.length) {
-                detenerLectura();
                 voiceStatus.textContent = 'Lectura finalizada';
+                btnPlay.textContent = '▶';
+                btnPause.style.display = 'none';
+                indiceActual = 0;
                 return;
             }
 
@@ -293,14 +294,14 @@
             utterance.lang = 'es-ES';
 
             utterance.onend = function() {
-                // ✅ CRÍTICO: No continuar si fue cancelado
-                if (canceladoManualmente) return;
+                // ✅ Verificar bloqueo antes de continuar
+                if (bloqueado) return;
                 indiceActual++;
                 leerSiguiente();
             };
 
             utterance.onerror = function(e) {
-                if (canceladoManualmente) return;
+                if (bloqueado) return;
                 console.warn('Error de voz:', e);
                 indiceActual++;
                 leerSiguiente();
@@ -310,19 +311,17 @@
             voiceStatus.textContent = '🔊 Leyendo (' + (indiceActual + 1) + '/' + listaNodos.length + ')';
         }
 
-        // ========== MÓDULO 1: DETENER (con bandera) ==========
+        // ========== MÓDULO 1: DETENER (con bandera persistente) ==========
         function detenerLectura() {
-            // ✅ Activar bandera ANTES de cancelar para que onend no reinicie
-            canceladoManualmente = true;
+            // ✅ Activar bandera ANTES de cancelar. NO se resetea con timeout.
+            bloqueado = true;
             synth.cancel();
             utterance = null;
             indiceActual = 0;
-            estaPausado = false;
+            listaNodos = [];
             btnPlay.textContent = '▶';
             btnPause.style.display = 'none';
             voiceStatus.textContent = 'Detenido';
-            // Resetear la bandera después de un instante (para permitir futuras lecturas)
-            setTimeout(function() { canceladoManualmente = false; }, 150);
         }
 
         // ========== MÓDULO 1: PLAY ==========
@@ -330,21 +329,18 @@
             if (synth.speaking && !synth.paused) {
                 // Está hablando: pausar
                 synth.pause();
-                estaPausado = true;
                 btnPlay.textContent = '▶';
                 btnPause.style.display = 'inline-block';
                 voiceStatus.textContent = '⏸ Pausado';
             } else if (synth.paused) {
-                // Reanudar (con cancelación previa del delay)
-                canceladoManualmente = false;
+                // Reanudar
                 synth.resume();
-                estaPausado = false;
                 btnPlay.textContent = '⏸';
                 btnPause.style.display = 'none';
                 voiceStatus.textContent = '🔊 Reanudando...';
             } else {
-                // Iniciar desde cero
-                canceladoManualmente = false;
+                // ✅ Iniciar desde cero: AQUÍ es el ÚNICO lugar donde se desbloquea
+                bloqueado = false;
                 listaNodos = prepararLista();
                 if (listaNodos.length === 0) {
                     voiceStatus.textContent = 'No hay contenido para leer';
@@ -361,7 +357,6 @@
         btnPause.addEventListener('click', function() {
             if (synth.speaking) {
                 synth.pause();
-                estaPausado = true;
                 btnPlay.textContent = '▶';
                 btnPause.style.display = 'none';
                 voiceStatus.textContent = '⏸ Pausado';
@@ -369,11 +364,14 @@
         });
 
         // ========== MÓDULO 1: STOP ==========
-        btnStop.addEventListener('click', detenerLectura);
+        btnStop.addEventListener('click', function() {
+            detenerLectura();
+            voiceStatus.textContent = '⏹ Detenido';
+        });
 
         // ========== EVENTOS DEL NÚCLEO ==========
         textarea.addEventListener('input', function() {
-            // ✅ Detener lectura al editar (con bandera para no reiniciar)
+            // ✅ Detener lectura al editar (si está activa)
             if (synth.speaking || synth.paused) {
                 detenerLectura();
             }
@@ -386,7 +384,7 @@
         document.getElementById('btnSumula').addEventListener('click', function() {
             var texto = prompt("Pega tu texto aquí:");
             if (texto) {
-                detenerLectura();
+                if (synth.speaking || synth.paused) detenerLectura();
                 textarea.value = texto;
                 localStorage.setItem('nexus_contenido', texto);
                 generarMapa();
@@ -394,7 +392,7 @@
         });
 
         document.getElementById('btnCorolario').addEventListener('click', function() {
-            detenerLectura();
+            if (synth.speaking || synth.paused) detenerLectura();
             var corolario = "# Corolario Pedagógico\n## ¿Qué es?\n- Síntesis didáctica.\n## ¿Para qué sirve?\n- Guía práctica.\n## Características\n### La Fundación\n#### Detalles\n- Sin un Maestro Perfecto es imposible recibir el Naam.";
             textarea.value = corolario;
             localStorage.setItem('nexus_contenido', corolario);
