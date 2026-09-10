@@ -67,7 +67,6 @@ textarea{width:100%;height:100%;border:none;outline:none;font-family:'Consolas',
 <button class="btn-play" id="btnPlay">▶</button>
 <button class="btn-pause" id="btnPause" style="display:none">⏸</button>
 <button class="btn-stop" id="btnStop">⏹</button>
-<!-- MÓDULO 4 · ELEGÍA -->
 <button class="btn-loop" id="btnLoop" title="Repetir en bucle">🔂</button>
 <select id="voiceSelect"></select>
 <span class="timer-display" id="timerDisplay">00:00</span>
@@ -104,10 +103,12 @@ var bloqueado=false;
 var cronoInterval=null;
 var cronoSegundos=0;
 var cronoInicioTramo=0;
-// ✅ MÓDULO 4: Bandera del bucle
 var bucleActivo=false;
+// ✅ NUEVO: Estado del reproductor
+// "detenido" | "leyendo" | "pausado"
+var estadoReproductor='detenido';
 
-var ejemplo="# Acelerador de Conocimiento\n## ¿Qué es?\n- Herramienta para estructurar ideas jerárquicamente.\n## ¿Para qué sirve?\n- Planificar cursos, proyectos.\n## Características\n### Edición en tiempo real\n### Interactividad";
+var ejemplo="# Acelerador de Conocimiento\n## ¿Qué es?\n- Herramienta para estructurar ideas jerárquicamente.\n## Para qué sirve?\n- Planificar cursos, proyectos.\n## Características\n### Edición en tiempo real\n### Interactividad";
 textarea.value=localStorage.getItem('nexus_contenido')||ejemplo;
 
 // PARSER
@@ -214,33 +215,56 @@ resultado.raices.forEach(function(r){recorrer(r.id);});
 return lista;
 }
 
-// LEER SIGUIENTE (con soporte para bucle)
+// ✅ FUNCIÓN AUXILIAR: obtener voz seleccionada
+function obtenerVozSeleccionada(){
+var voces=synth.getVoices().filter(function(v){return v.lang.indexOf('es')===0;});
+var idx=parseInt(voiceSelect.value);
+if(voces.length>0&&!isNaN(idx))return voces[idx]||voces[0];
+return null;
+}
+
+// ✅ LEER SIGUIENTE (reestructurado)
 function leerSiguiente(){
 if(bloqueado)return;
 if(indiceActual>=listaNodos.length){
-// ✅ MÓDULO 4: Si el bucle está activo, reiniciar; si no, terminar
 if(bucleActivo){
 indiceActual=0;
 voiceStatus.textContent='🔂 Bucle reiniciando...';
 setTimeout(leerSiguiente,300);
 return;
 }
+// Fin de lista: detener pero mantener el cronómetro
+estadoReproductor='detenido';
 voiceStatus.textContent='Lectura finalizada';
-btnPlay.textContent='▶';btnPause.style.display='none';
-indiceActual=0;pausarCronometro();return;
+btnPlay.textContent='▶';
+btnPause.style.display='none';
+indiceActual=0;
+pausarCronometro();
+return;
 }
 var texto=listaNodos[indiceActual];
 var textoLimpio=limpiarTexto(texto);
 if(!textoLimpio){indiceActual++;leerSiguiente();return;}
 if(utterance)synth.cancel();
 utterance=new SpeechSynthesisUtterance(textoLimpio);
-var voces=synth.getVoices();
-var vocesEspanol=voces.filter(function(v){return v.lang.indexOf('es')===0;});
-var idx=parseInt(voiceSelect.value);
-if(vocesEspanol.length>0&&!isNaN(idx))utterance.voice=vocesEspanol[idx]||vocesEspanol[0];
-utterance.rate=0.9;utterance.pitch=1;utterance.lang='es-ES';
-utterance.onend=function(){if(bloqueado)return;indiceActual++;leerSiguiente();};
-utterance.onerror=function(){if(bloqueado)return;indiceActual++;leerSiguiente();};
+var voz=obtenerVozSeleccionada();
+if(voz)utterance.voice=voz;
+// ✅ NO forzar utterance.lang para evitar el error "Language detection"
+utterance.rate=0.9;utterance.pitch=1;
+utterance.onend=function(){
+if(bloqueado)return;
+if(estadoReproductor!=='leyendo')return;
+indiceActual++;
+leerSiguiente();
+};
+utterance.onerror=function(e){
+if(bloqueado)return;
+if(estadoReproductor!=='leyendo')return;
+console.warn('Error voz:',e);
+indiceActual++;
+leerSiguiente();
+};
+estadoReproductor='leyendo';
 synth.speak(utterance);
 var prefijo=bucleActivo?'🔂 ':'🔊 ';
 voiceStatus.textContent=prefijo+'Leyendo ('+(indiceActual+1)+'/'+listaNodos.length+')';
@@ -249,36 +273,72 @@ voiceStatus.textContent=prefijo+'Leyendo ('+(indiceActual+1)+'/'+listaNodos.leng
 // DETENER
 function detenerLectura(){
 bloqueado=true;
-synth.cancel();
+estadoReproductor='detenido';
+try{synth.cancel();}catch(e){}
 utterance=null;indiceActual=0;listaNodos=[];
 btnPlay.textContent='▶';btnPause.style.display='none';
 voiceStatus.textContent='Detenido';
 resetearCronometro();
+setTimeout(function(){bloqueado=false;},100);
 }
 
-// PLAY
+// ✅ PLAY (lógica reestructurada con estados)
 btnPlay.addEventListener('click',function(){
-if(synth.speaking&&!synth.paused){
-synth.pause();btnPlay.textContent='▶';btnPause.style.display='inline-block';
-voiceStatus.textContent='⏸ Pausado';pausarCronometro();
-}else if(synth.paused){
-synth.resume();btnPlay.textContent='⏸';btnPause.style.display='none';
-voiceStatus.textContent=(bucleActivo?'🔂 ':'🔊 ')+'Reanudando...';iniciarCronometro();
-}else{
+// CASO 1: Está LEYENDO → pausar
+if(estadoReproductor==='leyendo'){
+try{synth.pause();}catch(e){}
+estadoReproductor='pausado';
+btnPlay.textContent='▶';
+btnPause.style.display='inline-block';
+voiceStatus.textContent='⏸ Pausado en nodo '+(indiceActual+1);
+pausarCronometro();
+return;
+}
+// CASO 2: Está PAUSADO → reanudar (relanzando desde el nodo actual)
+if(estadoReproductor==='pausado'){
+// ✅ TRUCO ANTI-CUELGUE: cancelar y relanzar el nodo actual
+try{synth.cancel();}catch(e){}
+estadoReproductor='leyendo';
+btnPlay.textContent='⏸';
+btnPause.style.display='none';
+voiceStatus.textContent='🔊 Reanudando...';
+iniciarCronometro();
+// Pequeño delay para que Chrome procese el cancel
+setTimeout(function(){leerSiguiente();},100);
+return;
+}
+// CASO 3: Está DETENIDO → iniciar desde cero
 bloqueado=false;
 listaNodos=prepararLista();
 if(listaNodos.length===0){voiceStatus.textContent='No hay contenido';return;}
 indiceActual=0;
-resetearCronometro();iniciarCronometro();
-leerSiguiente();btnPlay.textContent='⏸';btnPause.style.display='none';
+resetearCronometro();
+iniciarCronometro();
+estadoReproductor='leyendo';
+leerSiguiente();
+btnPlay.textContent='⏸';
+btnPause.style.display='none';
+});
+
+// PAUSA EXPLÍCITA (botón secundario)
+btnPause.addEventListener('click',function(){
+if(estadoReproductor==='leyendo'){
+try{synth.pause();}catch(e){}
+estadoReproductor='pausado';
+btnPlay.textContent='▶';
+btnPause.style.display='none';
+voiceStatus.textContent='⏸ Pausado en nodo '+(indiceActual+1);
+pausarCronometro();
 }
 });
-btnPause.addEventListener('click',function(){
-if(synth.speaking){synth.pause();btnPlay.textContent='▶';btnPause.style.display='none';voiceStatus.textContent='⏸ Pausado';pausarCronometro();}
-});
-btnStop.addEventListener('click',function(){detenerLectura();voiceStatus.textContent='⏹ Detenido';});
 
-// ✅ MÓDULO 4 · ELEGÍA: Handler del bucle
+// STOP
+btnStop.addEventListener('click',function(){
+detenerLectura();
+voiceStatus.textContent='⏹ Detenido';
+});
+
+// ELEGÍA
 btnLoop.addEventListener('click',function(){
 bucleActivo=!bucleActivo;
 btnLoop.classList.toggle('active',bucleActivo);
@@ -287,7 +347,7 @@ voiceStatus.textContent=bucleActivo?'🔂 Bucle ACTIVADO':'🔂 Bucle desactivad
 
 // EVENTOS
 textarea.addEventListener('input',function(){
-if(synth.speaking||synth.paused)detenerLectura();
+if(estadoReproductor!=='detenido')detenerLectura();
 localStorage.setItem('nexus_contenido',textarea.value);
 generarMapa();
 });
@@ -295,10 +355,10 @@ generarMapa();
 
 document.getElementById('btnSumula').addEventListener('click',function(){
 var texto=prompt("Pega tu texto aquí:");
-if(texto){if(synth.speaking||synth.paused)detenerLectura();textarea.value=texto;localStorage.setItem('nexus_contenido',texto);generarMapa();}
+if(texto){if(estadoReproductor!=='detenido')detenerLectura();textarea.value=texto;localStorage.setItem('nexus_contenido',texto);generarMapa();}
 });
 document.getElementById('btnCorolario').addEventListener('click',function(){
-if(synth.speaking||synth.paused)detenerLectura();
+if(estadoReproductor!=='detenido')detenerLectura();
 var corolario="# Corolario Pedagógico\n## ¿Qué es?\n- Síntesis didáctica.\n## ¿Para qué sirve?\n- Guía práctica.\n## Características\n### La Fundación\n#### Detalles\n- Sin un Maestro Perfecto es imposible recibir el Naam.";
 textarea.value=corolario;localStorage.setItem('nexus_contenido',corolario);generarMapa();
 });
@@ -376,7 +436,7 @@ html+=tagScriptOpen;
 html+='(function(){';
 html+='var raw=document.getElementById("raw-content").textContent;';
 html+='var synth=window.speechSynthesis;';
-html+='var utterance=null,listaNodos=[],indiceActual=0,bloqueado=false,bucleActivo=false;';
+html+='var utterance=null,listaNodos=[],indiceActual=0,bloqueado=false,bucleActivo=false,estadoReproductor="detenido";';
 html+='var cronoInterval=null,cronoSegundos=0,cronoInicioTramo=0;';
 html+='var btnPlay=document.getElementById("btnPlay"),btnPause=document.getElementById("btnPause"),btnStop=document.getElementById("btnStop"),btnLoop=document.getElementById("btnLoop");';
 html+='var voiceSelect=document.getElementById("voiceSelect"),statusEl=document.getElementById("status"),timerDisplay=document.getElementById("timerDisplay"),timerEstimado=document.getElementById("timerEstimado"),mapaDiv=document.getElementById("mapa");';
@@ -393,10 +453,11 @@ html+='function formatearTiempo(s){var m=Math.floor(s/60);var g=s%60;return(m<10
 html+='function iniciarCrono(){if(cronoInterval)return;cronoInicioTramo=Date.now();cronoInterval=setInterval(function(){var t=Math.floor((Date.now()-cronoInicioTramo)/1000);timerDisplay.textContent=formatearTiempo(cronoSegundos+t);},250);}';
 html+='function pausarCrono(){if(!cronoInterval)return;var t=Math.floor((Date.now()-cronoInicioTramo)/1000);cronoSegundos+=t;clearInterval(cronoInterval);cronoInterval=null;timerDisplay.textContent=formatearTiempo(cronoSegundos);}';
 html+='function resetCrono(){if(cronoInterval){clearInterval(cronoInterval);cronoInterval=null;}cronoSegundos=0;cronoInicioTramo=0;timerDisplay.textContent="00:00";}';
-html+='function leerSiguiente(){if(bloqueado)return;if(indiceActual>=listaNodos.length){if(bucleActivo){indiceActual=0;statusEl.textContent="🔂 Bucle reiniciando...";setTimeout(leerSiguiente,300);return;}statusEl.textContent="Lectura finalizada";btnPlay.textContent="▶";btnPause.style.display="none";indiceActual=0;pausarCrono();return;}var texto=listaNodos[indiceActual];var limpio=limpiarTexto(texto);if(!limpio){indiceActual++;leerSiguiente();return;}if(utterance)synth.cancel();utterance=new SpeechSynthesisUtterance(limpio);var voces=synth.getVoices().filter(function(v){return v.lang.indexOf("es")===0;});var idx=parseInt(voiceSelect.value);if(voces.length&&!isNaN(idx))utterance.voice=voces[idx]||voces[0];utterance.rate=0.9;utterance.pitch=1;utterance.lang="es-ES";utterance.onend=function(){if(bloqueado)return;indiceActual++;leerSiguiente();};utterance.onerror=function(){if(bloqueado)return;indiceActual++;leerSiguiente();};synth.speak(utterance);var prefijo=bucleActivo?"🔂 ":"🔊 ";statusEl.textContent=prefijo+"Leyendo ("+(indiceActual+1)+"/"+listaNodos.length+")";}';
-html+='btnPlay.onclick=function(){if(synth.speaking&&!synth.paused){synth.pause();btnPlay.textContent="▶";btnPause.style.display="inline-block";statusEl.textContent="⏸ Pausado";pausarCrono();}else if(synth.paused){synth.resume();btnPlay.textContent="⏸";btnPause.style.display="none";statusEl.textContent=(bucleActivo?"🔂 ":"🔊 ")+"Reanudando...";iniciarCrono();}else{bloqueado=false;listaNodos=prepararLista();if(!listaNodos.length){statusEl.textContent="Sin contenido";return;}indiceActual=0;resetCrono();iniciarCrono();leerSiguiente();btnPlay.textContent="⏸";btnPause.style.display="none";}};';
-html+='btnPause.onclick=function(){if(synth.speaking){synth.pause();btnPlay.textContent="▶";btnPause.style.display="none";statusEl.textContent="⏸ Pausado";pausarCrono();}};';
-html+='btnStop.onclick=function(){bloqueado=true;synth.cancel();utterance=null;indiceActual=0;listaNodos=[];btnPlay.textContent="▶";btnPause.style.display="none";statusEl.textContent="Detenido";resetCrono();};';
+html+='function obtenerVoz(){var voces=synth.getVoices().filter(function(v){return v.lang.indexOf("es")===0;});var idx=parseInt(voiceSelect.value);if(voces.length&&!isNaN(idx))return voces[idx]||voces[0];return null;}';
+html+='function leerSiguiente(){if(bloqueado)return;if(indiceActual>=listaNodos.length){if(bucleActivo){indiceActual=0;statusEl.textContent="🔂 Bucle reiniciando...";setTimeout(leerSiguiente,300);return;}estadoReproductor="detenido";statusEl.textContent="Lectura finalizada";btnPlay.textContent="▶";btnPause.style.display="none";indiceActual=0;pausarCrono();return;}var texto=listaNodos[indiceActual];var limpio=limpiarTexto(texto);if(!limpio){indiceActual++;leerSiguiente();return;}if(utterance)synth.cancel();utterance=new SpeechSynthesisUtterance(limpio);var v=obtenerVoz();if(v)utterance.voice=v;utterance.rate=0.9;utterance.pitch=1;utterance.onend=function(){if(bloqueado)return;if(estadoReproductor!=="leyendo")return;indiceActual++;leerSiguiente();};utterance.onerror=function(e){if(bloqueado)return;if(estadoReproductor!=="leyendo")return;indiceActual++;leerSiguiente();};estadoReproductor="leyendo";synth.speak(utterance);var p=bucleActivo?"🔂 ":"🔊 ";statusEl.textContent=p+"Leyendo ("+(indiceActual+1)+"/"+listaNodos.length+")";}';
+html+='btnPlay.onclick=function(){if(estadoReproductor==="leyendo"){try{synth.pause();}catch(e){}estadoReproductor="pausado";btnPlay.textContent="▶";btnPause.style.display="inline-block";statusEl.textContent="⏸ Pausado";pausarCrono();return;}if(estadoReproductor==="pausado"){try{synth.cancel();}catch(e){}estadoReproductor="leyendo";btnPlay.textContent="⏸";btnPause.style.display="none";statusEl.textContent="🔊 Reanudando...";iniciarCrono();setTimeout(function(){leerSiguiente();},100);return;}bloqueado=false;listaNodos=prepararLista();if(!listaNodos.length){statusEl.textContent="Sin contenido";return;}indiceActual=0;resetCrono();iniciarCrono();estadoReproductor="leyendo";leerSiguiente();btnPlay.textContent="⏸";btnPause.style.display="none";};';
+html+='btnPause.onclick=function(){if(estadoReproductor==="leyendo"){try{synth.pause();}catch(e){}estadoReproductor="pausado";btnPlay.textContent="▶";btnPause.style.display="none";statusEl.textContent="⏸ Pausado";pausarCrono();}};';
+html+='btnStop.onclick=function(){bloqueado=true;estadoReproductor="detenido";try{synth.cancel();}catch(e){}utterance=null;indiceActual=0;listaNodos=[];btnPlay.textContent="▶";btnPause.style.display="none";statusEl.textContent="Detenido";resetCrono();setTimeout(function(){bloqueado=false;},100);};';
 html+='btnLoop.onclick=function(){bucleActivo=!bucleActivo;btnLoop.classList.toggle("active",bucleActivo);statusEl.textContent=bucleActivo?"🔂 Bucle ACTIVADO":"🔂 Bucle desactivado";};';
 html+='document.getElementById("btnExpandir").onclick=function(){document.querySelectorAll(".children").forEach(function(c){c.classList.remove("collapsed");});document.querySelectorAll(".icon").forEach(function(i){i.textContent="▼";});};';
 html+='document.getElementById("btnColapsar").onclick=function(){document.querySelectorAll(".children").forEach(function(c){c.classList.add("collapsed");});document.querySelectorAll(".icon").forEach(function(i){i.textContent="▶";});};';
