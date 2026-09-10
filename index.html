@@ -23,6 +23,17 @@
         .collapsed { display: none; }
         .icon { font-size: 0.8rem; opacity: 0.6; margin-left: 8px; }
         .empty-msg { color: #999; text-align: center; padding: 40px 20px; font-style: italic; }
+        /* Panel de voz */
+        .voice-panel { background: #f8f9fc; border-radius: 10px; padding: 10px 12px; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; border: 1px solid #e0e6ed; }
+        .voice-panel button { border: none; border-radius: 8px; padding: 6px 12px; cursor: pointer; font-size: 16px; font-weight: bold; }
+        .btn-play { background: #2ecc71; color: white; }
+        .btn-play:hover { background: #27ae60; }
+        .btn-pause { background: #f39c12; color: white; }
+        .btn-pause:hover { background: #e67e22; }
+        .btn-stop { background: #e74c3c; color: white; }
+        .btn-stop:hover { background: #c0392b; }
+        .voice-panel select { padding: 5px 10px; border-radius: 8px; border: 1px solid #ccc; font-size: 13px; color: #333; background: white; max-width: 200px; }
+        .voice-status { font-size: 12px; color: #666; margin-left: auto; }
     </style>
 </head>
 <body>
@@ -40,6 +51,14 @@
                 <textarea id="contenido" spellcheck="false"></textarea>
             </div>
             <div class="panel">
+                <!-- MÓDULO 1: VOZ ESMERALDA -->
+                <div class="voice-panel">
+                    <button class="btn-play" id="btnPlay" title="Reproducir">▶</button>
+                    <button class="btn-pause" id="btnPause" title="Pausar" style="display:none;">⏸</button>
+                    <button class="btn-stop" id="btnStop" title="Detener">⏹</button>
+                    <select id="voiceSelect" title="Seleccionar voz"></select>
+                    <span class="voice-status" id="voiceStatus">Listo</span>
+                </div>
                 <div id="mapa"></div>
             </div>
         </div>
@@ -47,13 +66,29 @@
 
     <script>
     (function() {
+        // ========== NÚCLEO SÚMULA ==========
         var textarea = document.getElementById('contenido');
         var mapaDiv = document.getElementById('mapa');
 
+        // ========== MÓDULO 1: VOZ ESMERALDA ==========
+        var btnPlay = document.getElementById('btnPlay');
+        var btnPause = document.getElementById('btnPause');
+        var btnStop = document.getElementById('btnStop');
+        var voiceSelect = document.getElementById('voiceSelect');
+        var voiceStatus = document.getElementById('voiceStatus');
+
+        var synth = window.speechSynthesis;
+        var utterance = null;
+        var listaNodos = [];      // Lista de textos que se van a leer
+        var indiceActual = 0;      // Nodo que está sonando
+        var estaPausado = false;
+
+        // Contenido por defecto
         var ejemplo = "# Acelerador de Conocimiento\n## ¿Qué es?\n- Herramienta para estructurar ideas jerárquicamente.\n## ¿Para qué sirve?\n- Planificar cursos, proyectos.\n## Características\n### Edición en tiempo real\n### Interactividad";
 
         textarea.value = localStorage.getItem('nexus_contenido') || ejemplo;
 
+        // ========== PARSER (NÚCLEO) ==========
         function parsear(texto) {
             var lineas = texto.split('\n');
             var nodos = [];
@@ -106,6 +141,7 @@
             return { nodos: nodos, hijosMap: hijosMap, raices: nodos.filter(function(n) { return n.padreId === null; }) };
         }
 
+        // ========== RENDERIZADOR (NÚCLEO) ==========
         function generarMapa() {
             var resultado = parsear(textarea.value);
             var nodosMap = new Map(resultado.nodos.map(function(n) { return [n.id, n]; }));
@@ -142,6 +178,7 @@
                     });
                     card.appendChild(cont);
 
+                    // IMPORTANTE: Clic solo expande/colapsa, NO inicia lectura
                     card.onclick = function(e) {
                         e.stopPropagation();
                         cont.classList.toggle('collapsed');
@@ -157,8 +194,178 @@
             });
         }
 
+        // ========== MÓDULO 1: LIMPIEZA DE TEXTO ==========
+        // Elimina todos los símbolos de markdown para que no se lean
+        function limpiarTexto(t) {
+            return t
+                .replace(/^#{1,6}\s*/gm, '')      // Elimina #, ##, ###...
+                .replace(/^[-*+]\s*/gm, '')       // Elimina - , * , +
+                .replace(/^>\s?/gm, '')            // Elimina >
+                .replace(/\*\*/g, '')              // Elimina **
+                .replace(/__/g, '')                // Elimina __
+                .replace(/\*/g, '')                // Elimina *
+                .replace(/_/g, '')                 // Elimina _
+                .replace(/~~/g, '')                // Elimina ~~
+                .replace(/`/g, '')                 // Elimina `
+                .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')  // [texto](url) -> texto
+                .replace(/!\[([^\]]*)\]\([^)]*\)/g, '$1') // ![alt](url) -> alt
+                .replace(/\n+/g, '. ')             // Saltos de línea -> punto
+                .replace(/\s{2,}/g, ' ')           // Espacios múltiples -> uno
+                .trim();
+        }
+
+        // ========== MÓDULO 1: POBLAR VOCES ==========
+        function poblarVoces() {
+            var voces = synth.getVoices();
+            var vocesEspanol = voces.filter(function(v) { return v.lang.indexOf('es') === 0; });
+            
+            voiceSelect.innerHTML = '';
+            if (vocesEspanol.length === 0) {
+                var opt = document.createElement('option');
+                opt.textContent = 'Sin voces en español';
+                voiceSelect.appendChild(opt);
+                return;
+            }
+            
+            vocesEspanol.forEach(function(v, i) {
+                var opt = document.createElement('option');
+                opt.value = i;
+                opt.textContent = v.name + ' (' + v.lang + ')';
+                voiceSelect.appendChild(opt);
+            });
+        }
+
+        if (synth.onvoiceschanged !== undefined) {
+            synth.onvoiceschanged = poblarVoces;
+        }
+        poblarVoces();
+        setTimeout(poblarVoces, 500);
+
+        // ========== MÓDULO 1: PREPARAR LISTA DE LECTURA ==========
+        function prepararLista() {
+            var resultado = parsear(textarea.value);
+            var lista = [];
+
+            // Recorrer todos los nodos desde las raíces
+            function recorrer(id) {
+                var nodo = null;
+                for (var i = 0; i < resultado.nodos.length; i++) {
+                    if (resultado.nodos[i].id === id) { nodo = resultado.nodos[i]; break; }
+                }
+                if (!nodo) return;
+                lista.push(nodo.etiqueta);
+                var hijos = resultado.hijosMap.get(id) || [];
+                hijos.forEach(recorrer);
+            }
+
+            resultado.raices.forEach(function(r) { recorrer(r.id); });
+            return lista;
+        }
+
+        // ========== MÓDULO 1: LEER SIGUIENTE ==========
+        function leerSiguiente() {
+            if (indiceActual >= listaNodos.length) {
+                detenerLectura();
+                voiceStatus.textContent = 'Lectura finalizada';
+                return;
+            }
+
+            var texto = listaNodos[indiceActual];
+            var textoLimpio = limpiarTexto(texto);
+
+            if (!textoLimpio) {
+                indiceActual++;
+                leerSiguiente();
+                return;
+            }
+
+            if (utterance) synth.cancel();
+            utterance = new SpeechSynthesisUtterance(textoLimpio);
+
+            var voces = synth.getVoices();
+            var vocesEspanol = voces.filter(function(v) { return v.lang.indexOf('es') === 0; });
+            var idx = parseInt(voiceSelect.value);
+            if (vocesEspanol.length > 0 && !isNaN(idx)) {
+                utterance.voice = vocesEspanol[idx] || vocesEspanol[0];
+            }
+            utterance.rate = 0.9;
+            utterance.pitch = 1;
+            utterance.lang = 'es-ES';
+
+            utterance.onend = function() {
+                indiceActual++;
+                leerSiguiente();
+            };
+
+            utterance.onerror = function(e) {
+                console.warn('Error de voz:', e);
+                indiceActual++;
+                leerSiguiente();
+            };
+
+            synth.speak(utterance);
+            voiceStatus.textContent = '🔊 Leyendo (' + (indiceActual + 1) + '/' + listaNodos.length + ')';
+        }
+
+        // ========== MÓDULO 1: DETENER ==========
+        function detenerLectura() {
+            synth.cancel();
+            utterance = null;
+            indiceActual = 0;
+            estaPausado = false;
+            btnPlay.textContent = '▶';
+            btnPause.style.display = 'none';
+            voiceStatus.textContent = 'Detenido';
+        }
+
+        // ========== MÓDULO 1: PLAY ==========
+        btnPlay.addEventListener('click', function() {
+            if (synth.speaking && !synth.paused) {
+                // Está hablando: pausar
+                synth.pause();
+                estaPausado = true;
+                btnPlay.textContent = '▶';
+                btnPause.style.display = 'inline-block';
+                voiceStatus.textContent = '⏸ Pausado';
+            } else if (synth.paused) {
+                // Está pausado: reanudar
+                synth.resume();
+                estaPausado = false;
+                btnPlay.textContent = '⏸';
+                btnPause.style.display = 'none';
+                voiceStatus.textContent = '🔊 Reanudando...';
+            } else {
+                // Detenido: iniciar desde cero
+                listaNodos = prepararLista();
+                if (listaNodos.length === 0) {
+                    voiceStatus.textContent = 'No hay contenido para leer';
+                    return;
+                }
+                indiceActual = 0;
+                leerSiguiente();
+                btnPlay.textContent = '⏸';
+                btnPause.style.display = 'none';
+            }
+        });
+
+        // ========== MÓDULO 1: PAUSA EXPLÍCITA ==========
+        btnPause.addEventListener('click', function() {
+            if (synth.speaking) {
+                synth.pause();
+                estaPausado = true;
+                btnPlay.textContent = '▶';
+                btnPause.style.display = 'none';
+                voiceStatus.textContent = '⏸ Pausado';
+            }
+        });
+
+        // ========== MÓDULO 1: STOP ==========
+        btnStop.addEventListener('click', detenerLectura);
+
+        // ========== EVENTOS DEL NÚCLEO ==========
         textarea.addEventListener('input', function() {
             localStorage.setItem('nexus_contenido', textarea.value);
+            detenerLectura();
             generarMapa();
         });
 
@@ -169,6 +376,7 @@
             if (texto) {
                 textarea.value = texto;
                 localStorage.setItem('nexus_contenido', texto);
+                detenerLectura();
                 generarMapa();
             }
         });
@@ -177,6 +385,7 @@
             var corolario = "# Corolario Pedagógico\n## ¿Qué es?\n- Síntesis didáctica.\n## ¿Para qué sirve?\n- Guía práctica.\n## Características\n### La Fundación\n#### Detalles\n- Sin un Maestro Perfecto es imposible recibir el Naam.";
             textarea.value = corolario;
             localStorage.setItem('nexus_contenido', corolario);
+            detenerLectura();
             generarMapa();
         });
 
@@ -185,7 +394,7 @@
             if (!document.getElementById('darkStyle')) {
                 var style = document.createElement('style');
                 style.id = 'darkStyle';
-                style.textContent = 'body.dark-theme{background:#1e1e2e;color:#e0e0e0}body.dark-theme .panel{background:#2a2a3c;color:#e0e0e0}body.dark-theme textarea{background:#2a2a3c;color:#e0e0e0}body.dark-theme .node{background:#333;color:#fff}body.dark-theme .node:hover{background:#444}';
+                style.textContent = 'body.dark-theme{background:#1e1e2e;color:#e0e0e0}body.dark-theme .panel{background:#2a2a3c;color:#e0e0e0}body.dark-theme textarea{background:#2a2a3c;color:#e0e0e0}body.dark-theme .node{background:#333;color:#fff}body.dark-theme .node:hover{background:#444}body.dark-theme .voice-panel{background:#2a2a3c;border-color:#3a3a4c}body.dark-theme .voice-panel select{background:#333;color:#fff;border-color:#555}body.dark-theme .voice-status{color:#aaa}';
                 document.head.appendChild(style);
             }
         });
