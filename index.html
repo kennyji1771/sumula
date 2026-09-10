@@ -6,7 +6,7 @@
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
 body{font-family:'Segoe UI',sans-serif;background:#f4f7fc;color:#333;padding:20px;margin:0}
 .container{max-width:1200px;margin:auto}
@@ -1085,11 +1085,13 @@ descargarBlob(lineas.join('\n'),'text/plain',slugificar(titulo)+'_enriquecido.tx
 voiceStatus.textContent='✅ TXT Enriquecido exportado';
 });
 
-// EXPORTAR PDF (FORMATO LIBRO) — Descarga directa con html2pdf.js
+// ==========================================================
+// EXPORTAR PDF (FORMATO LIBRO) — Con jsPDF real (texto, no imágenes)
+// ==========================================================
 document.getElementById('exportarPdfLibro').addEventListener('click',function(){
 var texto=textarea.value;
 if(!texto.trim()){alert('No hay contenido');return;}
-if(typeof html2pdf==='undefined'){alert('La librería PDF no está cargada. Recarga la página.');return;}
+if(typeof window.jspdf==='undefined'){alert('La librería jsPDF no está cargada. Recarga la página.');return;}
 
 var titulo=obtenerTitulo();
 var r=parsear(texto);
@@ -1100,94 +1102,185 @@ var btnPdf=document.getElementById('exportarPdfLibro');
 btnPdf.style.pointerEvents='none';
 btnPdf.style.opacity='0.5';
 
-var capitulosHTML='';
+setTimeout(function(){
+try{
+var jsPDF=window.jspdf.jsPDF;
+var doc=new jsPDF({unit:'mm',format:'a4',orientation:'portrait'});
+
+// Dimensiones de página
+var pageW=210;
+var pageH=297;
+var marginTop=25;
+var marginBottom=25;
+var marginLeft=25;
+var marginRight=25;
+var contentW=pageW-marginLeft-marginRight;
+var contentH=pageH-marginTop-marginBottom;
+
+var y=marginTop;
+
+// === PORTADA ===
+doc.setFont('times','normal');
+doc.setFontSize(48);
+doc.setTextColor(139,115,85);
+doc.text('\u2766',pageW/2,80,{align:'center'});
+
+doc.setFontSize(32);
+doc.setTextColor(26,42,74);
+// Título con ajuste de ancho
+var tituloLineas=doc.splitTextToSize(titulo,contentW-20);
+var tituloY=110;
+for(var ti=0;ti<tituloLineas.length;ti++){
+doc.text(tituloLineas[ti],pageW/2,tituloY,{align:'center'});
+tituloY+=14;
+}
+
+// Línea decorativa
+doc.setDrawColor(139,115,85);
+doc.setLineWidth(0.5);
+doc.line(pageW/2-30,140,pageW/2+30,140);
+
+doc.setFont('times','italic');
+doc.setFontSize(14);
+doc.setTextColor(102,102,102);
+doc.text('Documento estructurado con S\u00daMULA',pageW/2,155,{align:'center'});
+
+doc.setFont('times','normal');
+doc.setFontSize(10);
+doc.setTextColor(136,136,136);
+doc.text('NEXUS ACELERADOR',pageW/2,260,{align:'center'});
+doc.setFont('times','italic');
+doc.setFontSize(11);
+doc.setTextColor(139,115,85);
+doc.text(String(new Date().getFullYear()),pageW/2,270,{align:'center'});
+
+// === CAPÍTULOS ===
 var capituloNum=0;
-function generarCapitulo(id,nivel){
-var nodo=nodosMap.get(id);
-if(!nodo)return '';
-var hijos=r.hijosMap.get(id)||[];
-var etiqueta=nodo.etiqueta.replace(/^#{1,6}\s*/,'').replace(/^[-*]\s*/,'');
-var html='';
-if(nivel===0){
+var primeraPaginaCapitulo=true;
+var yActual=0;
+
+function nuevaPagina(){
+doc.addPage();
+yActual=marginTop;
+}
+
+function escribirParrafo(textoParrafo,opciones){
+opciones=opciones||{};
+var fontSize=opciones.fontSize||11;
+var fontStyle=opciones.fontStyle||'normal';
+var color=opciones.color||[26,26,26];
+var espacioDespues=opciones.espacioDespues||3;
+var centrado=opciones.centrado||false;
+
+doc.setFont('times',fontStyle);
+doc.setFontSize(fontSize);
+doc.setTextColor(color[0],color[1],color[2]);
+
+var ancho=contentW;
+var lineas=doc.splitTextToSize(textoParrafo,ancho);
+var lineHeight=fontSize*0.45;
+
+for(var i=0;i<lineas.length;i++){
+if(yActual+lineHeight>pageH-marginBottom){
+nuevaPagina();
+}
+if(centrado){
+doc.text(lineas[i],pageW/2,yActual,{align:'center'});
+}else{
+doc.text(lineas[i],marginLeft,yActual);
+}
+yActual+=lineHeight;
+}
+yActual+=espacioDespues;
+}
+
+function escribirCapitulo(etiqueta){
+if(!primeraPaginaCapitulo){
+nuevaPagina();
+}else{
+nuevaPagina();
+}
+primeraPaginaCapitulo=false;
 capituloNum++;
-html+='<div class="chapter">';
-html+='<div class="chapter-number">Capítulo '+capituloNum+'</div>';
-html+='<h1 class="chapter-title">'+etiqueta+'</h1>';
-html+='<div class="chapter-sep">❦</div>';
-hijos.forEach(function(h){html+=generarCapitulo(h,nivel+1);});
-html+='</div>';
+
+// Número de capítulo
+doc.setFont('times','normal');
+doc.setFontSize(10);
+doc.setTextColor(139,115,85);
+doc.text('CAP\u00cdTULO '+capituloNum,pageW/2,marginTop+10,{align:'center'});
+
+// Título del capítulo
+doc.setFontSize(22);
+doc.setTextColor(26,42,74);
+var lineasTitulo=doc.splitTextToSize(etiqueta,contentW-20);
+var yTit=marginTop+25;
+for(var i=0;i<lineasTitulo.length;i++){
+doc.text(lineasTitulo[i],pageW/2,yTit,{align:'center'});
+yTit+=10;
+}
+
+// Ornamento
+doc.setFontSize(14);
+doc.setTextColor(139,115,85);
+doc.text('\u2766',pageW/2,yTit+5,{align:'center'});
+
+yActual=yTit+20;
+}
+
+function procesarNodo(id,nivel){
+var nodo=nodosMap.get(id);
+if(!nodo)return;
+var hijos=r.hijosMap.get(id)||[];
+var etiqueta=nodo.etiqueta.replace(/^#{1,6}\s*/,'').replace(/^[-*]\s*/,'').trim();
+
+if(nivel===0){
+escribirCapitulo(etiqueta);
+hijos.forEach(function(h){procesarNodo(h,nivel+1);});
 }else if(nivel===1){
-html+='<h2 class="section-title">'+etiqueta+'</h2>';
-hijos.forEach(function(h){html+=generarCapitulo(h,nivel+1);});
+if(yActual+30>pageH-marginBottom){nuevaPagina();}
+escribirParrafo(etiqueta,{fontSize:14,fontStyle:'bold',color:[26,42,74],espacioDespues:2});
+// Línea bajo el título
+doc.setDrawColor(212,207,196);
+doc.setLineWidth(0.2);
+doc.line(marginLeft,yActual-1,marginLeft+contentW,yActual-1);
+yActual+=3;
+hijos.forEach(function(h){procesarNodo(h,nivel+1);});
 }else if(nivel===2){
-html+='<h3 class="subsection-title">'+etiqueta+'</h3>';
-hijos.forEach(function(h){html+=generarCapitulo(h,nivel+1);});
+if(yActual+20>pageH-marginBottom){nuevaPagina();}
+escribirParrafo(etiqueta,{fontSize:12,fontStyle:'bold',color:[44,62,107],espacioDespues:2});
+hijos.forEach(function(h){procesarNodo(h,nivel+1);});
 }else if(nivel===3){
-html+='<h4 class="subsubsection-title">'+etiqueta+'</h4>';
-hijos.forEach(function(h){html+=generarCapitulo(h,nivel+1);});
+if(yActual+18>pageH-marginBottom){nuevaPagina();}
+escribirParrafo(etiqueta,{fontSize:11,fontStyle:'bolditalic',color:[68,68,68],espacioDespues:2});
+hijos.forEach(function(h){procesarNodo(h,nivel+1);});
 }else{
 if(hijos.length===0){
-html+='<p class="paragraph">'+etiqueta+'</p>';
+escribirParrafo(etiqueta,{fontSize:11,fontStyle:'normal',color:[26,26,26],espacioDespues:3});
 }else{
-html+='<p class="paragraph"><strong>'+etiqueta+'</strong></p>';
-hijos.forEach(function(h){html+=generarCapitulo(h,nivel+1);});
+escribirParrafo(etiqueta,{fontSize:11,fontStyle:'bold',color:[26,26,26],espacioDespues:2});
+hijos.forEach(function(h){procesarNodo(h,nivel+1);});
 }
 }
-return html;
 }
-r.raices.forEach(function(raiz){capitulosHTML+=generarCapitulo(raiz.id,0);});
 
-var bookHTML='<!DOCTYPE html><html lang="es-ES"><head><meta charset="UTF-8"><title>'+titulo+'</title><style>';
-bookHTML+='*{box-sizing:border-box;margin:0;padding:0}';
-bookHTML+='body{font-family:"Georgia","Times New Roman",serif;font-size:11pt;line-height:1.7;color:#1a1a1a;background:white}';
-bookHTML+='.cover{height:250mm;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;padding:40mm 20mm 0 20mm;page-break-after:always;position:relative}';
-bookHTML+='.cover-ornament{font-size:32pt;color:#8B7355;margin-bottom:40mm}';
-bookHTML+='.cover-title{font-size:32pt;font-weight:normal;letter-spacing:2px;margin:0 0 10mm 0;color:#1a2a4a;line-height:1.2}';
-bookHTML+='.cover-subtitle{font-size:14pt;font-style:italic;color:#666;margin:10mm 0 30mm 0}';
-bookHTML+='.cover-line{width:120px;height:2px;background:#8B7355;margin:20mm auto}';
-bookHTML+='.cover-footer{font-size:10pt;color:#888;letter-spacing:3px;text-transform:uppercase;margin-top:auto;padding-bottom:40mm}';
-bookHTML+='.cover-year{font-size:11pt;color:#8B7355;margin-top:5mm;font-style:italic}';
-bookHTML+='.chapter{padding:10mm 5mm 5mm 5mm;page-break-before:always}';
-bookHTML+='.chapter:first-of-type{page-break-before:auto}';
-bookHTML+='.chapter-number{font-size:10pt;letter-spacing:4px;text-transform:uppercase;color:#8B7355;text-align:center;margin-bottom:5mm}';
-bookHTML+='.chapter-title{font-size:24pt;font-weight:normal;text-align:center;color:#1a2a4a;margin:0 0 5mm 0;line-height:1.3;letter-spacing:1px}';
-bookHTML+='.chapter-sep{text-align:center;font-size:14pt;color:#8B7355;margin:8mm 0 12mm 0}';
-bookHTML+='.section-title{font-size:15pt;font-weight:bold;color:#1a2a4a;margin:12mm 0 6mm 0;border-bottom:1px solid #d4cfc4;padding-bottom:3mm;page-break-after:avoid}';
-bookHTML+='.subsection-title{font-size:13pt;font-weight:bold;color:#2c3e6b;margin:10mm 0 4mm 0;page-break-after:avoid}';
-bookHTML+='.subsubsection-title{font-size:11.5pt;font-weight:bold;font-style:italic;color:#444;margin:8mm 0 3mm 0;page-break-after:avoid}';
-bookHTML+='.paragraph{text-align:justify;margin:3mm 0 5mm 0;text-indent:0}';
-bookHTML+='</style></head><body>';
-bookHTML+='<div class="cover">';
-bookHTML+='<div class="cover-ornament">❦</div>';
-bookHTML+='<h1 class="cover-title">'+titulo+'</h1>';
-bookHTML+='<div class="cover-line"></div>';
-bookHTML+='<div class="cover-subtitle">Documento estructurado con SÚMULA</div>';
-bookHTML+='<div class="cover-footer">Nexus Acelerador<div class="cover-year">'+new Date().getFullYear()+'</div></div>';
-bookHTML+='</div>';
-bookHTML+=capitulosHTML;
-bookHTML+='</body></html>';
+// Procesar todas las raíces
+r.raices.forEach(function(raiz){procesarNodo(raiz.id,0);});
 
+// Guardar el PDF
 var nombreArchivo=slugificar(titulo)+'.pdf';
-var opciones={
-margin:[20,15,20,15],
-filename:nombreArchivo,
-image:{type:'jpeg',quality:0.98},
-html2canvas:{scale:2,useCORS:true,letterRendering:true,logging:false},
-jsPDF:{unit:'mm',format:'a4',orientation:'portrait'},
-pagebreak:{mode:['css','legacy'],before:'.chapter'}
-};
+doc.save(nombreArchivo);
 
-html2pdf().set(opciones).from(bookHTML).save().then(function(){
-voiceStatus.textContent='✅ PDF descargado: '+nombreArchivo;
+voiceStatus.textContent='✅ PDF descargado: '+nombreArchivo+' ('+doc.getNumberOfPages()+' páginas)';
 btnPdf.style.pointerEvents='auto';
 btnPdf.style.opacity='1';
-}).catch(function(err){
+}catch(err){
 console.error('Error PDF:',err);
 voiceStatus.textContent='❌ Error al generar PDF';
 alert('Error al generar el PDF:\n\n'+err.message);
 btnPdf.style.pointerEvents='auto';
 btnPdf.style.opacity='1';
-});
+}
+},100);
 });
 
 })();
