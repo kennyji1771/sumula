@@ -91,7 +91,6 @@ body.dark #karaokeBody .karaoke-word.highlight-word{background:#b8860b;color:#ff
 <button class="btn-stop" id="btnStop">⏹</button>
 <button class="btn-loop" id="btnLoop" title="Repetir en bucle">🔂</button>
 <button class="btn-karaoke" id="btnKaraoke" title="Modo lectura asistida">📖</button>
-<!-- MÓDULO 7 · CAPTURA -->
 <button class="btn-rec" id="btnRec" title="Grabar audio de la pestaña">⏺</button>
 <button class="btn-clear" id="btnClear" title="Limpiar selección">✕ Limpiar</button>
 <select id="voiceSelect"></select>
@@ -120,6 +119,9 @@ body.dark #karaokeBody .karaoke-word.highlight-word{background:#b8860b;color:#ff
 
 <script>
 (function(){
+// ✅ FIX 1: Forzar idioma del documento para eliminar el warning de Chrome
+document.documentElement.lang = 'es-ES';
+
 var textarea=document.getElementById('contenido');
 var mapaDiv=document.getElementById('mapa');
 var btnPlay=document.getElementById('btnPlay');
@@ -140,7 +142,6 @@ var kPlay=document.getElementById('kPlay');
 var kPause=document.getElementById('kPause');
 var kStop=document.getElementById('kStop');
 var kClose=document.getElementById('kClose');
-// MÓDULO 7
 var btnRec=document.getElementById('btnRec');
 
 var synth=window.speechSynthesis;
@@ -160,7 +161,6 @@ var karaokeActivo=false;
 var karaokeWords=[];
 var karaokePositions=[];
 var karaokeCurrentIdx=-1;
-// MÓDULO 7: Variables de grabación
 var mediaRecorder=null;
 var audioChunks=[];
 var grabando=false;
@@ -260,12 +260,16 @@ if(pref>=0)voiceSelect.selectedIndex=pref;
 if(synth.onvoiceschanged!==undefined)synth.onvoiceschanged=function(){poblarVoces();};
 poblarVoces();setTimeout(poblarVoces,100);setTimeout(poblarVoces,300);setTimeout(poblarVoces,800);setTimeout(poblarVoces,1500);
 
+// ✅ FIX 2: Asignar lang ANTES de voice para evitar el warning
 function asignarVoz(u){
 vocesCargadas=obtenerVocesEspanol();
 if(vocesCargadas.length===0)return false;
 var idx=parseInt(voiceSelect.value);
 if(isNaN(idx)||idx<0||idx>=vocesCargadas.length)idx=0;
-u.voice=vocesCargadas[idx];u.lang='es-ES';return true;
+// ✅ lang primero, voice después
+u.lang='es-ES';
+u.voice=vocesCargadas[idx];
+return true;
 }
 
 function formatearTiempo(s){var m=Math.floor(s/60);var g=s%60;return(m<10?'0':'')+m+':'+(g<10?'0':'')+g;}
@@ -359,6 +363,8 @@ if(miGeneracion!==generacion)return;
 if(estadoReproductor!=='leyendo')return;
 try{
 var u=new SpeechSynthesisUtterance(texto);
+// ✅ lang ANTES de voice
+u.lang='es-ES';
 if(!asignarVoz(u)){voiceStatus.textContent='⚠️ Sin voz';onDone();return;}
 u.rate=0.9;u.pitch=1;u.volume=1;
 u.onboundary=function(ev){
@@ -464,49 +470,112 @@ kPause.addEventListener('click',function(){btnPause.click();});
 kStop.addEventListener('click',function(){btnStop.click();});
 
 // ==========================================================
-// MÓDULO 7 · CAPTURA: Grabación de audio de la pestaña
+// MÓDULO 7 · CAPTURA — Versión con detección de soporte
 // ==========================================================
+function detectarSoporteGrabacion(){
+var info={
+getDisplayMedia: !!(navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia),
+mediaRecorder: typeof MediaRecorder !== 'undefined',
+esFirefox: navigator.userAgent.indexOf('Firefox') !== -1,
+esSafari: /^((?!chrome|android).)*safari/i.test(navigator.userAgent),
+esChrome: navigator.userAgent.indexOf('Chrome') !== -1
+};
+return info;
+}
+
 async function toggleGrabacion(){
 if(grabando){
-// Detener grabación
 try{mediaRecorder.stop();}catch(e){}
 return;
 }
-// Iniciar grabación
-try{
-if(!navigator.mediaDevices||!navigator.mediaDevices.getDisplayMedia){
-alert('Tu navegador no soporta la grabación de pestaña. Usa Chrome o Edge.');
+
+var soporte=detectarSoporteGrabacion();
+
+// Diagnóstico inicial
+if(!soporte.getDisplayMedia){
+alert('❌ Tu navegador no soporta captura de pantalla/pestaña.\n\nUsa Chrome o Edge actualizado.');
 return;
 }
-// Pedir permiso para capturar el audio de la pestaña
-var stream=await navigator.mediaDevices.getDisplayMedia({
-audio:true,
-video:false,
-preferCurrentTab:false,
-systemAudio:'include'
-});
-// Verificar que tenga pista de audio
+if(!soporte.mediaRecorder){
+alert('❌ Tu navegador no soporta MediaRecorder.\n\nUsa Chrome o Edge actualizado.');
+return;
+}
+if(soporte.esFirefox){
+var continuar=confirm('⚠️ NOTA PARA FIREFOX:\n\nFirefox NO soporta capturar audio de la pestaña en la mayoría de sistemas. Solo capturará video sin audio.\n\nPara grabar audio, usa CHROME o EDGE.\n\n¿Quieres intentar de todas formas?');
+if(!continuar)return;
+}
+
+try{
+// ✅ Cadena de intentos para máxima compatibilidad
+var stream=null;
+var errores=[];
+// Intento 1: Solo audio (Chrome/Edge modernos)
+try{
+stream=await navigator.mediaDevices.getDisplayMedia({audio:true,video:false});
+}catch(e1){errores.push('audio-only: '+e1.name);}
+// Intento 2: Audio + video (algunos navegadores lo exigen)
+if(!stream){
+try{
+stream=await navigator.mediaDevices.getDisplayMedia({audio:true,video:true});
+}catch(e2){errores.push('audio+video: '+e2.name);}
+}
+// Intento 3: Solo video (último recurso)
+if(!stream){
+try{
+stream=await navigator.mediaDevices.getDisplayMedia({video:true});
+}catch(e3){errores.push('video-only: '+e3.name);}
+}
+
+if(!stream){
+alert('❌ No se pudo iniciar la captura.\n\nErrores:\n'+errores.join('\n')+'\n\nRecomendación: Usa CHROME o EDGE actualizado y marca "Compartir audio de la pestaña" al seleccionar.');
+return;
+}
+
+// Verificar si hay audio
 var hasAudio=stream.getAudioTracks().length>0;
 if(!hasAudio){
-voiceStatus.textContent='⚠️ No se capturó audio. Marca "Compartir audio de la pestaña".';
+voiceStatus.textContent='⚠️ No se capturó audio';
 try{stream.getTracks().forEach(function(t){t.stop();});}catch(e){}
-alert('⚠️ No se detectó audio.\n\nCuando el navegador te pida compartir, asegúrate de:\n1. Seleccionar la PESTAÑA actual\n2. Activar "Compartir audio de la pestaña" (abajo a la izquierda)');
+alert('⚠️ Se capturó VIDEO pero NO AUDIO.\n\nCuando el navegador te pida compartir:\n1. Selecciona la PESTAÑA "sumula-nine.vercel.app" (no la pantalla completa)\n2. Activa la casilla "Compartir audio de la pestaña" (abajo izquierda)\n3. Pulsa "Compartir"\n\nEn Chrome es la opción "También compartir audio de la pestaña".');
 return;
 }
+
+// ✅ Extraer SOLO el audio del stream (evita grabar video)
+var audioStream=new MediaStream(stream.getAudioTracks());
+
 audioChunks=[];
-// Elegir el mejor mimeType disponible
+// Detectar el mejor códec
 var mimeType='';
 if(typeof MediaRecorder.isTypeSupported==='function'){
-if(MediaRecorder.isTypeSupported('audio/webm;codecs=opus'))mimeType='audio/webm;codecs=opus';
-else if(MediaRecorder.isTypeSupported('audio/webm'))mimeType='audio/webm';
-else if(MediaRecorder.isTypeSupported('audio/mp4'))mimeType='audio/mp4';
+var tipos=['audio/webm;codecs=opus','audio/webm','audio/mp4;codecs=mp4a','audio/mp4','audio/ogg;codecs=opus','audio/ogg'];
+for(var i=0;i<tipos.length;i++){
+if(MediaRecorder.isTypeSupported(tipos[i])){mimeType=tipos[i];break;}
 }
+}
+
 var opts=mimeType?{mimeType:mimeType}:{};
-mediaRecorder=new MediaRecorder(stream,opts);
+try{
+mediaRecorder=new MediaRecorder(audioStream,opts);
+}catch(e3){
+try{
+mediaRecorder=new MediaRecorder(audioStream);
+}catch(e4){
+alert('❌ MediaRecorder no acepta este formato de audio.\n\nError: '+e4.message);
+try{stream.getTracks().forEach(function(t){t.stop();});}catch(e){}
+return;
+}
+}
+
 mediaRecorder.ondataavailable=function(e){if(e.data&&e.data.size>0)audioChunks.push(e.data);};
+
 mediaRecorder.onstop=function(){
+if(audioChunks.length===0){
+voiceStatus.textContent='⚠️ No se grabó audio';
+grabando=false;btnRec.classList.remove('recording');btnRec.textContent='⏺';
+return;
+}
 var tipo=mediaRecorder.mimeType||'audio/webm';
-var ext=tipo.indexOf('mp4')!==-1?'mp4':'webm';
+var ext=tipo.indexOf('mp4')!==-1?'mp4':(tipo.indexOf('ogg')!==-1?'ogg':'webm');
 var blob=new Blob(audioChunks,{type:tipo});
 var url=URL.createObjectURL(blob);
 var a=document.createElement('a');
@@ -519,32 +588,39 @@ setTimeout(function(){URL.revokeObjectURL(url);},1000);
 grabando=false;
 btnRec.classList.remove('recording');
 btnRec.textContent='⏺';
-voiceStatus.textContent='⏺ Grabación descargada ('+ext.toUpperCase()+')';
+voiceStatus.textContent='✅ Grabación descargada ('+ext.toUpperCase()+', '+(blob.size/1024).toFixed(0)+' KB)';
 };
-// Detectar cuando el usuario detiene la captura desde el navegador
-stream.getVideoTracks().forEach(function(t){
+
+// Detectar cuando el usuario detiene desde el navegador
+stream.getTracks().forEach(function(t){
 t.onended=function(){
 if(grabando){try{mediaRecorder.stop();}catch(e){}}
 };
 });
-stream.getAudioTracks().forEach(function(t){
-t.onended=function(){
-if(grabando){try{mediaRecorder.stop();}catch(e){}}
-};
-});
-mediaRecorder.start(1000);// Recolectar chunks cada 1s
+
+mediaRecorder.start(1000);
 grabando=true;
 btnRec.classList.add('recording');
 btnRec.textContent='⏹';
 voiceStatus.textContent='⏺ GRABANDO... (pulsa ⏺ para detener)';
-// Aviso al usuario
 setTimeout(function(){
 if(grabando)voiceStatus.textContent='⏺ Grabando... pulsa ⏺ de nuevo para detener y descargar';
 },2000);
-}catch(e){
-console.error('Error grabación:',e);
+
+}catch(err){
+console.error('Error grabación:',err);
 voiceStatus.textContent='⚠️ Grabación cancelada';
-alert('No se pudo iniciar la grabación.\n\nPosibles causas:\n- No autorizaste el permiso de captura\n- No marcaste "Compartir audio de la pestaña"\n- Cancelaste el diálogo\n\nError: '+e.message);
+var msg='No se pudo iniciar la grabación.\n\n';
+if(err.name==='NotAllowedError'){
+msg+='Causa: No autorizaste la captura o la cancelaste.';
+}else if(err.name==='NotSupportedError'){
+msg+='Causa: Tu navegador no soporta esta función.\n\n✅ Solución: Usa CHROME o EDGE actualizado.';
+}else if(err.name==='InvalidStateError'){
+msg+='Causa: Ya hay una captura activa.';
+}else{
+msg+='Error: '+err.name+'\n'+err.message;
+}
+alert(msg);
 grabando=false;
 btnRec.classList.remove('recording');
 btnRec.textContent='⏺';
@@ -552,7 +628,6 @@ btnRec.textContent='⏺';
 }
 btnRec.addEventListener('click',toggleGrabacion);
 
-// EVENTOS
 textarea.addEventListener('input',function(){
 if(estadoReproductor!=='detenido')detenerLectura();
 localStorage.setItem('nexus_contenido',textarea.value);
@@ -579,7 +654,6 @@ document.head.appendChild(style);
 }
 });
 
-// FORJA
 var dropdownBtn=document.getElementById('dropdownBtn');
 var dropdownMenu=document.getElementById('dropdownMenu');
 dropdownBtn.addEventListener('click',function(e){e.stopPropagation();dropdownMenu.classList.toggle('show');});
@@ -592,7 +666,7 @@ var tagScriptClose='<'+'/script>';
 var tagPlainOpen='<'+'script type="text/plain" id="raw-content">';
 var tagPlainClose='<'+'/script>';
 var html='';
-html+='<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">';
+html+='<!DOCTYPE html><html lang="es-ES"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">';
 html+='<title>'+titulo+'</title><style>';
 html+='*{box-sizing:border-box}body{font-family:"Segoe UI",sans-serif;background:#f4f7fc;color:#333;padding:20px;margin:0}';
 html+='.container{max-width:900px;margin:auto}.header{background:linear-gradient(135deg,#1a2a4a,#2c3e6b);color:white;padding:15px;border-radius:12px;margin-bottom:20px}';
@@ -644,7 +718,7 @@ html+='<button class="btn-pause" id="btnPause" style="display:none">⏸</button>
 html+='<button class="btn-stop" id="btnStop">⏹</button>';
 html+='<button class="btn-loop" id="btnLoop">🔂</button>';
 html+='<button class="btn-karaoke" id="btnKaraoke">📖</button>';
-html+='<button class="btn-rec" id="btnRec" title="Grabar audio de la pestaña">⏺</button>';
+html+='<button class="btn-rec" id="btnRec">⏺</button>';
 html+='<button class="btn-clear" id="btnClear">✕ Limpiar</button>';
 html+='<select id="voiceSelect"></select>';
 html+='<span class="timer-display" id="timerDisplay">00:00</span>';
@@ -662,7 +736,7 @@ html+='<div id="mapa"></div></div>';
 html+='<div id="karaokeModal"><div id="karaokeHeader"><h3 id="karaokeTitle">📖 Lectura Asistida</h3><div><button class="btn-play" id="kPlay">▶</button><button class="btn-pause" id="kPause" style="display:none">⏸</button><button class="btn-stop" id="kStop">⏹</button><button id="kClose" style="background:#e74c3c;color:white">✕ Cerrar</button></div></div><div id="karaokeBody"></div></div>';
 html+=tagPlainOpen;html+=contenidoSeguro;html+=tagPlainClose;
 html+=tagScriptOpen;
-html+='(function(){';
+html+='(function(){document.documentElement.lang="es-ES";';
 html+='var raw=document.getElementById("raw-content").textContent;';
 html+='var synth=window.speechSynthesis;';
 html+='var utterance=null,listaNodos=[],indiceActual=0,bloqueado=false,bucleActivo=false,estadoReproductor="detenido";';
@@ -682,7 +756,7 @@ html+='function calcularEstimacion(){var lista=prepararLista();var limpio=limpia
 html+='function obtenerVocesEspanol(){var voces=synth.getVoices();var es=[];for(var i=0;i<voces.length;i++){if(voces[i].lang.toLowerCase().indexOf("es")===0)es.push(voces[i]);}return es;}';
 html+='function poblarVoces(){vocesCargadas=obtenerVocesEspanol();voiceSelect.innerHTML="";if(vocesCargadas.length===0){var opt=document.createElement("option");opt.textContent="(Cargando voces...)";voiceSelect.appendChild(opt);return;}vocesCargadas.forEach(function(v,i){var opt=document.createElement("option");opt.value=i;opt.textContent=v.name;voiceSelect.appendChild(opt);});}';
 html+='if(synth.onvoiceschanged!==undefined)synth.onvoiceschanged=poblarVoces;poblarVoces();setTimeout(poblarVoces,100);setTimeout(poblarVoces,300);setTimeout(poblarVoces,800);setTimeout(poblarVoces,1500);';
-html+='function asignarVoz(u){vocesCargadas=obtenerVocesEspanol();if(vocesCargadas.length===0)return false;var idx=parseInt(voiceSelect.value);if(isNaN(idx)||idx<0||idx>=vocesCargadas.length)idx=0;u.voice=vocesCargadas[idx];u.lang="es-ES";return true;}';
+html+='function asignarVoz(u){vocesCargadas=obtenerVocesEspanol();if(vocesCargadas.length===0)return false;var idx=parseInt(voiceSelect.value);if(isNaN(idx)||idx<0||idx>=vocesCargadas.length)idx=0;u.lang="es-ES";u.voice=vocesCargadas[idx];return true;}';
 html+='function formatearTiempo(s){var m=Math.floor(s/60);var g=s%60;return(m<10?"0":"")+m+":"+(g<10?"0":"")+g;}';
 html+='function iniciarCrono(){if(cronoInterval)return;cronoInicioTramo=Date.now();cronoInterval=setInterval(function(){var t=Math.floor((Date.now()-cronoInicioTramo)/1000);timerDisplay.textContent=formatearTiempo(cronoSegundos+t);},250);}';
 html+='function pausarCrono(){if(!cronoInterval)return;var t=Math.floor((Date.now()-cronoInicioTramo)/1000);cronoSegundos+=t;clearInterval(cronoInterval);cronoInterval=null;timerDisplay.textContent=formatearTiempo(cronoSegundos);}';
@@ -690,7 +764,7 @@ html+='function resetCrono(){if(cronoInterval){clearInterval(cronoInterval);cron
 html+='function prepararKaraoke(txtOrig){karaokeBody.innerHTML="";karaokeWords=[];karaokePositions=[];karaokeCurrentIdx=-1;var limpio=limpiarTexto(txtOrig);if(!limpio){karaokeBody.textContent="(Sin texto)";return;}var title=document.createElement("div");title.className="karaoke-node-title";title.textContent="▶ "+txtOrig;karaokeBody.appendChild(title);var container=document.createElement("div");var palabras=limpio.split(/\\s+/);var pos=0;for(var i=0;i<palabras.length;i++){var w=palabras[i];if(!w){pos++;continue;}var span=document.createElement("span");span.textContent=w;span.className="karaoke-word";span.dataset.idx=i;container.appendChild(span);karaokePositions.push({start:pos,end:pos+w.length,idx:i});pos+=w.length+1;container.appendChild(document.createTextNode(" "));karaokeWords.push(span);}karaokeBody.appendChild(container);}';
 html+='function resaltarPalabra(ci){if(!karaokeActivo)return;if(karaokePositions.length===0)return;for(var i=0;i<karaokePositions.length;i++){var p=karaokePositions[i];if(ci>=p.start&&ci<p.end){if(karaokeCurrentIdx!==i){if(karaokeCurrentIdx>=0&&karaokeWords[karaokeCurrentIdx])karaokeWords[karaokeCurrentIdx].classList.remove("highlight-word");karaokeWords[i].classList.add("highlight-word");karaokeCurrentIdx=i;try{karaokeWords[i].scrollIntoView({block:"center",behavior:"smooth"});}catch(e){}}return;}}}';
 html+='function limpiarSynth(){generacion++;try{if(utterance){utterance.onend=null;utterance.onerror=null;utterance.onstart=null;utterance.onboundary=null;}if(synth.paused)synth.resume();synth.cancel();}catch(e){}}';
-html+='function hablar(texto,onDone){if(vocesCargadas.length===0)vocesCargadas=obtenerVocesEspanol();if(vocesCargadas.length===0){statusEl.textContent="⚠ Cargando voces...";setTimeout(function(){hablar(texto,onDone);},400);return;}limpiarSynth();var miGen=generacion;setTimeout(function(){if(miGen!==generacion)return;if(estadoReproductor!=="leyendo")return;try{var u=new SpeechSynthesisUtterance(texto);if(!asignarVoz(u)){statusEl.textContent="⚠ Sin voz";onDone();return;}u.rate=0.9;u.pitch=1;u.volume=1;u.onboundary=function(ev){if(!karaokeActivo)return;if(miGen!==generacion)return;if(ev.name==="word"||ev.name==="sentence")resaltarPalabra(ev.charIndex);};u.onend=function(){if(miGen!==generacion)return;if(estadoReproductor!=="leyendo")return;onDone();};u.onerror=function(e){var err=e.error||"";if(err==="interrupted"||err==="canceled")return;if(miGen!==generacion)return;console.warn("Voz error:",err);if(estadoReproductor==="leyendo")setTimeout(function(){if(estadoReproductor==="leyendo"&&miGen===generacion)onDone();},200);};utterance=u;synth.speak(u);}catch(e){console.error(e);if(miGen===generacion)onDone();}},200);}';
+html+='function hablar(texto,onDone){if(vocesCargadas.length===0)vocesCargadas=obtenerVocesEspanol();if(vocesCargadas.length===0){statusEl.textContent="⚠ Cargando voces...";setTimeout(function(){hablar(texto,onDone);},400);return;}limpiarSynth();var miGen=generacion;setTimeout(function(){if(miGen!==generacion)return;if(estadoReproductor!=="leyendo")return;try{var u=new SpeechSynthesisUtterance(texto);u.lang="es-ES";if(!asignarVoz(u)){statusEl.textContent="⚠ Sin voz";onDone();return;}u.rate=0.9;u.pitch=1;u.volume=1;u.onboundary=function(ev){if(!karaokeActivo)return;if(miGen!==generacion)return;if(ev.name==="word"||ev.name==="sentence")resaltarPalabra(ev.charIndex);};u.onend=function(){if(miGen!==generacion)return;if(estadoReproductor!=="leyendo")return;onDone();};u.onerror=function(e){var err=e.error||"";if(err==="interrupted"||err==="canceled")return;if(miGen!==generacion)return;if(estadoReproductor==="leyendo")setTimeout(function(){if(estadoReproductor==="leyendo"&&miGen===generacion)onDone();},200);};utterance=u;synth.speak(u);}catch(e){if(miGen===generacion)onDone();}},200);}';
 html+='function leerSiguiente(){if(bloqueado)return;if(estadoReproductor!=="leyendo")return;if(indiceActual>=listaNodos.length){if(bucleActivo){indiceActual=0;statusEl.textContent="🔂 Bucle reiniciando...";setTimeout(leerSiguiente,500);return;}estadoReproductor="detenido";statusEl.textContent="Lectura finalizada";btnPlay.textContent="▶";btnPause.style.display="none";indiceActual=0;pausarCrono();return;}var texto=listaNodos[indiceActual];var limpio=limpiarTexto(texto);if(!limpio){indiceActual++;leerSiguiente();return;}var p=bucleActivo?"🔂 ":"🔊 ";var si=seleccionados.size>0?" [CRIBA]":"";var ri=grabando?" ⏺ REC":"";statusEl.textContent=p+"Leyendo ("+(indiceActual+1)+"/"+listaNodos.length+")"+si+ri;if(karaokeActivo)prepararKaraoke(texto);hablar(limpio,function(){indiceActual++;leerSiguiente();});}';
 html+='btnPlay.onclick=function(){if(estadoReproductor==="leyendo"){estadoReproductor="pausado";limpiarSynth();btnPlay.textContent="▶";btnPause.style.display="inline-block";statusEl.textContent="⏸ Pausado";pausarCrono();return;}if(estadoReproductor==="pausado"){estadoReproductor="leyendo";btnPlay.textContent="⏸";btnPause.style.display="none";statusEl.textContent="🔊 Reanudando...";iniciarCrono();setTimeout(function(){leerSiguiente();},250);return;}bloqueado=false;listaNodos=prepararLista();if(!listaNodos.length){statusEl.textContent="Sin contenido";return;}indiceActual=0;resetCrono();iniciarCrono();estadoReproductor="leyendo";var si=seleccionados.size>0?" (CRIBA: "+seleccionados.size+" nodos)":"";statusEl.textContent="🔊 Iniciando..."+si;btnPlay.textContent="⏸";btnPause.style.display="none";setTimeout(function(){leerSiguiente();},250);};';
 html+='btnPause.onclick=function(){if(estadoReproductor==="leyendo"){estadoReproductor="pausado";limpiarSynth();btnPlay.textContent="▶";btnPause.style.display="none";statusEl.textContent="⏸ Pausado";pausarCrono();}};';
@@ -700,8 +774,7 @@ html+='btnClear.onclick=function(){seleccionados.clear();actualizarInfoSeleccion
 html+='btnKaraoke.onclick=function(){karaokeActivo=!karaokeActivo;btnKaraoke.classList.toggle("active",karaokeActivo);if(karaokeActivo){karaokeModal.classList.add("show");statusEl.textContent="📖 Karaoke ACTIVADO";if(listaNodos.length>0&&indiceActual<listaNodos.length)prepararKaraoke(listaNodos[indiceActual]);else{var lista=prepararLista();if(lista.length>0)prepararKaraoke(lista[0]);else karaokeBody.innerHTML="<div style=\\"text-align:center;color:#999;padding:40px\\">Sin contenido</div>";}}else{karaokeModal.classList.remove("show");statusEl.textContent="📖 Karaoke desactivado";}};';
 html+='kClose.onclick=function(){karaokeActivo=false;btnKaraoke.classList.remove("active");karaokeModal.classList.remove("show");statusEl.textContent="📖 Karaoke cerrado";};';
 html+='kPlay.onclick=function(){btnPlay.click();};kPause.onclick=function(){btnPause.click();};kStop.onclick=function(){btnStop.click();};';
-// MÓDULO 7 en exportado
-html+='async function toggleGrabacion(){if(grabando){try{mediaRecorder.stop();}catch(e){}return;}try{if(!navigator.mediaDevices||!navigator.mediaDevices.getDisplayMedia){alert("Tu navegador no soporta la grabación. Usa Chrome o Edge.");return;}var stream=await navigator.mediaDevices.getDisplayMedia({audio:true,video:false,systemAudio:"include"});var hasAudio=stream.getAudioTracks().length>0;if(!hasAudio){statusEl.textContent="⚠ No se capturó audio";try{stream.getTracks().forEach(function(t){t.stop();});}catch(e){}alert("No se detectó audio. Marca Compartir audio de la pestaña.");return;}audioChunks=[];var mimeType="";if(typeof MediaRecorder.isTypeSupported==="function"){if(MediaRecorder.isTypeSupported("audio/webm;codecs=opus"))mimeType="audio/webm;codecs=opus";else if(MediaRecorder.isTypeSupported("audio/webm"))mimeType="audio/webm";else if(MediaRecorder.isTypeSupported("audio/mp4"))mimeType="audio/mp4";}var opts=mimeType?{mimeType:mimeType}:{};mediaRecorder=new MediaRecorder(stream,opts);mediaRecorder.ondataavailable=function(e){if(e.data&&e.data.size>0)audioChunks.push(e.data);};mediaRecorder.onstop=function(){var tipo=mediaRecorder.mimeType||"audio/webm";var ext=tipo.indexOf("mp4")!==-1?"mp4":"webm";var blob=new Blob(audioChunks,{type:tipo});var url=URL.createObjectURL(blob);var a=document.createElement("a");a.href=url;a.download="audio_"+Date.now()+"."+ext;document.body.appendChild(a);a.click();document.body.removeChild(a);setTimeout(function(){URL.revokeObjectURL(url);},1000);grabando=false;btnRec.classList.remove("recording");btnRec.textContent="⏺";statusEl.textContent="⏺ Grabación descargada";};stream.getVideoTracks().forEach(function(t){t.onended=function(){if(grabando){try{mediaRecorder.stop();}catch(e){}}}});stream.getAudioTracks().forEach(function(t){t.onended=function(){if(grabando){try{mediaRecorder.stop();}catch(e){}}}});mediaRecorder.start(1000);grabando=true;btnRec.classList.add("recording");btnRec.textContent="⏹";statusEl.textContent="⏺ GRABANDO...";setTimeout(function(){if(grabando)statusEl.textContent="⏺ Grabando... pulsa ⏺ para detener";},2000);}catch(e){console.error(e);statusEl.textContent="⚠ Grabación cancelada";alert("No se pudo grabar: "+e.message);grabando=false;btnRec.classList.remove("recording");btnRec.textContent="⏺";}}';
+html+='async function toggleGrabacion(){if(grabando){try{mediaRecorder.stop();}catch(e){}return;}if(!navigator.mediaDevices||!navigator.mediaDevices.getDisplayMedia){alert("Tu navegador no soporta la grabación. Usa Chrome o Edge.");return;}if(typeof MediaRecorder==="undefined"){alert("MediaRecorder no soportado. Usa Chrome o Edge.");return;}try{var stream=null;var errs=[];try{stream=await navigator.mediaDevices.getDisplayMedia({audio:true,video:false});}catch(e1){errs.push("audio-only:"+e1.name);}if(!stream){try{stream=await navigator.mediaDevices.getDisplayMedia({audio:true,video:true});}catch(e2){errs.push("audio+video:"+e2.name);}}if(!stream){try{stream=await navigator.mediaDevices.getDisplayMedia({video:true});}catch(e3){errs.push("video-only:"+e3.name);}}if(!stream){alert("No se pudo capturar.\\n\\nErrores:\\n"+errs.join("\\n")+"\\n\\nUsa CHROME o EDGE y marca Compartir audio de la pestaña.");return;}var hasAudio=stream.getAudioTracks().length>0;if(!hasAudio){statusEl.textContent="⚠ No se capturó audio";try{stream.getTracks().forEach(function(t){t.stop();});}catch(e){}alert("Se capturó VIDEO pero NO AUDIO.\\n\\nSelecciona la PESTAÑA actual y marca Compartir audio de la pestaña.");return;}var audioStream=new MediaStream(stream.getAudioTracks());audioChunks=[];var mimeType="";if(typeof MediaRecorder.isTypeSupported==="function"){var tipos=["audio/webm;codecs=opus","audio/webm","audio/mp4;codecs=mp4a","audio/mp4","audio/ogg;codecs=opus","audio/ogg"];for(var i=0;i<tipos.length;i++){if(MediaRecorder.isTypeSupported(tipos[i])){mimeType=tipos[i];break;}}}var opts=mimeType?{mimeType:mimeType}:{};try{mediaRecorder=new MediaRecorder(audioStream,opts);}catch(e3){try{mediaRecorder=new MediaRecorder(audioStream);}catch(e4){alert("MediaRecorder no acepta este audio.\\n"+e4.message);try{stream.getTracks().forEach(function(t){t.stop();});}catch(e){}return;}}mediaRecorder.ondataavailable=function(e){if(e.data&&e.data.size>0)audioChunks.push(e.data);};mediaRecorder.onstop=function(){if(audioChunks.length===0){statusEl.textContent="⚠ No se grabó audio";grabando=false;btnRec.classList.remove("recording");btnRec.textContent="⏺";return;}var tipo=mediaRecorder.mimeType||"audio/webm";var ext=tipo.indexOf("mp4")!==-1?"mp4":(tipo.indexOf("ogg")!==-1?"ogg":"webm");var blob=new Blob(audioChunks,{type:tipo});var url=URL.createObjectURL(blob);var a=document.createElement("a");a.href=url;a.download="audio_"+Date.now()+"."+ext;document.body.appendChild(a);a.click();document.body.removeChild(a);setTimeout(function(){URL.revokeObjectURL(url);},1000);grabando=false;btnRec.classList.remove("recording");btnRec.textContent="⏺";statusEl.textContent="✅ Grabación descargada ("+ext.toUpperCase()+", "+(blob.size/1024).toFixed(0)+" KB)";};stream.getTracks().forEach(function(t){t.onended=function(){if(grabando){try{mediaRecorder.stop();}catch(e){}}}});mediaRecorder.start(1000);grabando=true;btnRec.classList.add("recording");btnRec.textContent="⏹";statusEl.textContent="⏺ GRABANDO...";setTimeout(function(){if(grabando)statusEl.textContent="⏺ Grabando... pulsa ⏺ de nuevo para detener";},2000);}catch(err){var msg="No se pudo grabar.\\n\\n";if(err.name==="NotAllowedError")msg+="No autorizaste o cancelaste.";else if(err.name==="NotSupportedError")msg+="Tu navegador no soporta esta función. Usa CHROME o EDGE.";else msg+="Error: "+err.name+"\\n"+err.message;alert(msg);grabando=false;btnRec.classList.remove("recording");btnRec.textContent="⏺";}}';
 html+='btnRec.onclick=toggleGrabacion;';
 html+='document.getElementById("btnExpandir").onclick=function(){document.querySelectorAll(".children").forEach(function(c){c.classList.remove("collapsed");});document.querySelectorAll(".icon").forEach(function(i){i.textContent="▼";});};';
 html+='document.getElementById("btnColapsar").onclick=function(){document.querySelectorAll(".children").forEach(function(c){c.classList.add("collapsed");});document.querySelectorAll(".icon").forEach(function(i){i.textContent="▶";});};';
