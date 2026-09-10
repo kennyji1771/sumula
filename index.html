@@ -104,11 +104,11 @@ var cronoInterval=null;
 var cronoSegundos=0;
 var cronoInicioTramo=0;
 var bucleActivo=false;
-// ✅ NUEVO: Estado del reproductor
-// "detenido" | "leyendo" | "pausado"
-var estadoReproductor='detenido';
+// ✅ Estado propio del reproductor
+var estadoReproductor='detenido'; // 'detenido' | 'leyendo' | 'pausado'
+var vocesCargadas=[];
 
-var ejemplo="# Acelerador de Conocimiento\n## ¿Qué es?\n- Herramienta para estructurar ideas jerárquicamente.\n## Para qué sirve?\n- Planificar cursos, proyectos.\n## Características\n### Edición en tiempo real\n### Interactividad";
+var ejemplo="# Acelerador de Conocimiento\n## ¿Qué es?\n- Herramienta para estructurar ideas jerárquicamente.\n## ¿Para qué sirve?\n- Planificar cursos, proyectos.\n## Características\n### Edición en tiempo real\n### Interactividad";
 textarea.value=localStorage.getItem('nexus_contenido')||ejemplo;
 
 // PARSER
@@ -161,16 +161,62 @@ function limpiarTexto(t){
 return t.replace(/^#{1,6}\s*/gm,'').replace(/^[-*+]\s*/gm,'').replace(/^>\s?/gm,'').replace(/\*\*/g,'').replace(/__/g,'').replace(/\*/g,'').replace(/_/g,'').replace(/~~/g,'').replace(/`/g,'').replace(/\[([^\]]*)\]\([^)]*\)/g,'$1').replace(/!\[([^\]]*)\]\([^)]*\)/g,'$1').replace(/\n+/g,'. ').replace(/\s{2,}/g,' ').trim();
 }
 
-// VOCES
-function poblarVoces(){
+// ✅ VOCES: obtener lista de voces en español
+function obtenerVocesEspanol(){
 var voces=synth.getVoices();
-var vocesEspanol=voces.filter(function(v){return v.lang.indexOf('es')===0;});
-voiceSelect.innerHTML='';
-if(vocesEspanol.length===0){var opt=document.createElement('option');opt.textContent='Sin voces en español';voiceSelect.appendChild(opt);return;}
-vocesEspanol.forEach(function(v,i){var opt=document.createElement('option');opt.value=i;opt.textContent=v.name+' ('+v.lang+')';voiceSelect.appendChild(opt);});
+var es=[];
+for(var i=0;i<voces.length;i++){
+if(voces[i].lang.toLowerCase().indexOf('es')===0)es.push(voces[i]);
 }
-if(synth.onvoiceschanged!==undefined)synth.onvoiceschanged=poblarVoces;
-poblarVoces();setTimeout(poblarVoces,500);
+return es;
+}
+
+// ✅ Poblar voces (con reintento)
+function poblarVoces(){
+vocesCargadas=obtenerVocesEspanol();
+voiceSelect.innerHTML='';
+if(vocesCargadas.length===0){
+var opt=document.createElement('option');
+opt.textContent='(Cargando voces...)';
+voiceSelect.appendChild(opt);
+return;
+}
+vocesCargadas.forEach(function(v,i){
+var opt=document.createElement('option');
+opt.value=i;
+opt.textContent=v.name+' ('+v.lang+')';
+voiceSelect.appendChild(opt);
+});
+// Intentar seleccionar una voz en español de Latinoamérica por defecto
+var pref=-1;
+for(var j=0;j<vocesCargadas.length;j++){
+var n=vocesCargadas[j].name.toLowerCase();
+if(n.indexOf('sabina')!==-1||n.indexOf('helena')!==-1||n.indexOf('laura')!==-1||n.indexOf('paulina')!==-1){pref=j;break;}
+}
+if(pref>=0)voiceSelect.selectedIndex=pref;
+}
+
+// ✅ Asignar voz al utterance
+function asignarVoz(u){
+vocesCargadas=obtenerVocesEspanol();
+if(vocesCargadas.length===0)return false;
+var idx=parseInt(voiceSelect.value);
+if(isNaN(idx)||idx<0||idx>=vocesCargadas.length)idx=0;
+u.voice=vocesCargadas[idx];
+u.lang=vocesCargadas[idx].lang;
+return true;
+}
+
+// Cargar voces (con eventos y reintentos)
+if(synth.onvoiceschanged!==undefined){
+synth.onvoiceschanged=function(){poblarVoces();};
+}
+poblarVoces();
+// Reintentos escalonados para Chrome (que carga voces asíncronamente)
+setTimeout(poblarVoces,100);
+setTimeout(poblarVoces,300);
+setTimeout(poblarVoces,800);
+setTimeout(poblarVoces,1500);
 
 // CRONOS
 function formatearTiempo(s){var m=Math.floor(s/60);var g=s%60;return(m<10?'0':'')+m+':'+(g<10?'0':'')+g;}
@@ -215,25 +261,72 @@ resultado.raices.forEach(function(r){recorrer(r.id);});
 return lista;
 }
 
-// ✅ FUNCIÓN AUXILIAR: obtener voz seleccionada
-function obtenerVozSeleccionada(){
-var voces=synth.getVoices().filter(function(v){return v.lang.indexOf('es')===0;});
-var idx=parseInt(voiceSelect.value);
-if(voces.length>0&&!isNaN(idx))return voces[idx]||voces[0];
-return null;
+// ✅ LIMPIAR SYNTH correctamente (resume + cancel)
+function limpiarSynth(){
+try{
+if(synth.paused)synth.resume();
+synth.cancel();
+}catch(e){}
 }
 
-// ✅ LEER SIGUIENTE (reestructurado)
+// ✅ HABLAR: función robusta
+function hablar(texto,onDone){
+// Asegurar que las voces estén cargadas
+if(vocesCargadas.length===0){vocesCargadas=obtenerVocesEspanol();}
+if(vocesCargadas.length===0){
+voiceStatus.textContent='⚠️ Cargando voces, espera...';
+setTimeout(function(){hablar(texto,onDone);},400);
+return;
+}
+// Cancelar cualquier utterance previo
+limpiarSynth();
+
+// Pequeño delay para que Chrome procese el cancel
+setTimeout(function(){
+try{
+var u=new SpeechSynthesisUtterance(texto);
+if(!asignarVoz(u)){
+voiceStatus.textContent='⚠️ Sin voz disponible';
+onDone();
+return;
+}
+u.rate=0.9;
+u.pitch=1;
+u.volume=1;
+u.onend=function(){
+if(estadoReproductor!=='leyendo')return;
+onDone();
+};
+u.onerror=function(e){
+console.warn('Error voz:',e.error||e);
+// Si falla, esperar y reintentar una vez
+if(estadoReproductor==='leyendo'){
+setTimeout(function(){
+if(estadoReproductor==='leyendo')onDone();
+},200);
+}
+};
+utterance=u;
+synth.speak(u);
+}catch(e){
+console.error('Error al hablar:',e);
+onDone();
+}
+},120);
+}
+
+// LEER SIGUIENTE
 function leerSiguiente(){
 if(bloqueado)return;
+if(estadoReproductor!=='leyendo')return;
+
 if(indiceActual>=listaNodos.length){
 if(bucleActivo){
 indiceActual=0;
 voiceStatus.textContent='🔂 Bucle reiniciando...';
-setTimeout(leerSiguiente,300);
+setTimeout(leerSiguiente,400);
 return;
 }
-// Fin de lista: detener pero mantener el cronómetro
 estadoReproductor='detenido';
 voiceStatus.textContent='Lectura finalizada';
 btnPlay.textContent='▶';
@@ -242,72 +335,60 @@ indiceActual=0;
 pausarCronometro();
 return;
 }
+
 var texto=listaNodos[indiceActual];
 var textoLimpio=limpiarTexto(texto);
-if(!textoLimpio){indiceActual++;leerSiguiente();return;}
-if(utterance)synth.cancel();
-utterance=new SpeechSynthesisUtterance(textoLimpio);
-var voz=obtenerVozSeleccionada();
-if(voz)utterance.voice=voz;
-// ✅ NO forzar utterance.lang para evitar el error "Language detection"
-utterance.rate=0.9;utterance.pitch=1;
-utterance.onend=function(){
-if(bloqueado)return;
-if(estadoReproductor!=='leyendo')return;
+
+if(!textoLimpio){
 indiceActual++;
 leerSiguiente();
-};
-utterance.onerror=function(e){
-if(bloqueado)return;
-if(estadoReproductor!=='leyendo')return;
-console.warn('Error voz:',e);
-indiceActual++;
-leerSiguiente();
-};
-estadoReproductor='leyendo';
-synth.speak(utterance);
+return;
+}
+
 var prefijo=bucleActivo?'🔂 ':'🔊 ';
 voiceStatus.textContent=prefijo+'Leyendo ('+(indiceActual+1)+'/'+listaNodos.length+')';
+
+hablar(textoLimpio,function(){
+indiceActual++;
+leerSiguiente();
+});
 }
 
 // DETENER
 function detenerLectura(){
 bloqueado=true;
 estadoReproductor='detenido';
-try{synth.cancel();}catch(e){}
+limpiarSynth();
 utterance=null;indiceActual=0;listaNodos=[];
 btnPlay.textContent='▶';btnPause.style.display='none';
 voiceStatus.textContent='Detenido';
 resetearCronometro();
-setTimeout(function(){bloqueado=false;},100);
+setTimeout(function(){bloqueado=false;},200);
 }
 
-// ✅ PLAY (lógica reestructurada con estados)
+// ✅ PLAY (máquina de estados con cancel en lugar de pause/resume)
 btnPlay.addEventListener('click',function(){
-// CASO 1: Está LEYENDO → pausar
+// CASO 1: LEYENDO → pausar
 if(estadoReproductor==='leyendo'){
-try{synth.pause();}catch(e){}
 estadoReproductor='pausado';
+limpiarSynth();
 btnPlay.textContent='▶';
 btnPause.style.display='inline-block';
 voiceStatus.textContent='⏸ Pausado en nodo '+(indiceActual+1);
 pausarCronometro();
 return;
 }
-// CASO 2: Está PAUSADO → reanudar (relanzando desde el nodo actual)
+// CASO 2: PAUSADO → reanudar (relanzar el nodo actual)
 if(estadoReproductor==='pausado'){
-// ✅ TRUCO ANTI-CUELGUE: cancelar y relanzar el nodo actual
-try{synth.cancel();}catch(e){}
 estadoReproductor='leyendo';
 btnPlay.textContent='⏸';
 btnPause.style.display='none';
 voiceStatus.textContent='🔊 Reanudando...';
 iniciarCronometro();
-// Pequeño delay para que Chrome procese el cancel
-setTimeout(function(){leerSiguiente();},100);
+setTimeout(function(){leerSiguiente();},200);
 return;
 }
-// CASO 3: Está DETENIDO → iniciar desde cero
+// CASO 3: DETENIDO → iniciar desde cero
 bloqueado=false;
 listaNodos=prepararLista();
 if(listaNodos.length===0){voiceStatus.textContent='No hay contenido';return;}
@@ -315,16 +396,17 @@ indiceActual=0;
 resetearCronometro();
 iniciarCronometro();
 estadoReproductor='leyendo';
-leerSiguiente();
+voiceStatus.textContent='🔊 Iniciando...';
 btnPlay.textContent='⏸';
 btnPause.style.display='none';
+setTimeout(function(){leerSiguiente();},200);
 });
 
-// PAUSA EXPLÍCITA (botón secundario)
+// PAUSA EXPLÍCITA
 btnPause.addEventListener('click',function(){
 if(estadoReproductor==='leyendo'){
-try{synth.pause();}catch(e){}
 estadoReproductor='pausado';
+limpiarSynth();
 btnPlay.textContent='▶';
 btnPause.style.display='none';
 voiceStatus.textContent='⏸ Pausado en nodo '+(indiceActual+1);
@@ -343,6 +425,11 @@ btnLoop.addEventListener('click',function(){
 bucleActivo=!bucleActivo;
 btnLoop.classList.toggle('active',bucleActivo);
 voiceStatus.textContent=bucleActivo?'🔂 Bucle ACTIVADO':'🔂 Bucle desactivado';
+});
+
+// Al cambiar de voz, repoblar si es necesario
+voiceSelect.addEventListener('change',function(){
+// No hacer nada especial, se usará en la próxima llamada a hablar()
 });
 
 // EVENTOS
@@ -438,6 +525,7 @@ html+='var raw=document.getElementById("raw-content").textContent;';
 html+='var synth=window.speechSynthesis;';
 html+='var utterance=null,listaNodos=[],indiceActual=0,bloqueado=false,bucleActivo=false,estadoReproductor="detenido";';
 html+='var cronoInterval=null,cronoSegundos=0,cronoInicioTramo=0;';
+html+='var vocesCargadas=[];';
 html+='var btnPlay=document.getElementById("btnPlay"),btnPause=document.getElementById("btnPause"),btnStop=document.getElementById("btnStop"),btnLoop=document.getElementById("btnLoop");';
 html+='var voiceSelect=document.getElementById("voiceSelect"),statusEl=document.getElementById("status"),timerDisplay=document.getElementById("timerDisplay"),timerEstimado=document.getElementById("timerEstimado"),mapaDiv=document.getElementById("mapa");';
 var parserFn=parsear.toString();
@@ -447,17 +535,20 @@ html+='var limpiarTexto='+limpiarFn+';';
 html+='function prepararLista(){var res=parsear(raw);var lista=[];function rec(id){var nodo=null;for(var i=0;i<res.nodos.length;i++){if(res.nodos[i].id===id){nodo=res.nodos[i];break;}}if(!nodo)return;lista.push(nodo.etiqueta);var hijos=res.hijosMap.get(id)||[];hijos.forEach(rec);}res.raices.forEach(function(r){rec(r.id);});return lista;}';
 html+='function generarMapa(){var res=parsear(raw);var nodosMap=new Map();res.nodos.forEach(function(n){nodosMap.set(n.id,n);});var hijosMap=res.hijosMap;mapaDiv.innerHTML="";if(!res.raices.length){mapaDiv.innerHTML="<div style=\\"text-align:center;color:#999;padding:40px;\\">Sin contenido</div>";return;}function construir(id){var nodo=nodosMap.get(id);if(!nodo)return null;var hijos=hijosMap.get(id)||[];var card=document.createElement("div");card.className="node level-"+Math.min(nodo.nivel,4);var span=document.createElement("span");span.textContent=nodo.etiqueta;card.appendChild(span);if(hijos.length){var icon=document.createElement("span");icon.className="icon";icon.textContent="▶";card.appendChild(icon);var cont=document.createElement("div");cont.className="children collapsed";hijos.forEach(function(h){var c=construir(h);if(c)cont.appendChild(c);});card.appendChild(cont);card.onclick=function(e){e.stopPropagation();cont.classList.toggle("collapsed");icon.textContent=cont.classList.contains("collapsed")?"▶":"▼";};}return card;}res.raices.forEach(function(r){var c=construir(r.id);if(c)mapaDiv.appendChild(c);});calcularEstimacion();}';
 html+='function calcularEstimacion(){var lista=prepararLista();var limpio=limpiarTexto(lista.join(" "));if(!limpio){timerEstimado.textContent="";return;}var palabras=limpio.split(/\\s+/).length;var segundosTotales=Math.round((palabras/(175*0.9))*60);var min=Math.floor(segundosTotales/60);var seg=segundosTotales%60;timerEstimado.textContent="~"+min+"m "+(seg<10?"0":"")+seg+"s ("+palabras+" pal.)";}';
-html+='function poblarVoces(){var voces=synth.getVoices().filter(function(v){return v.lang.indexOf("es")===0;});voiceSelect.innerHTML="";voces.forEach(function(v,i){var o=document.createElement("option");o.value=i;o.textContent=v.name;voiceSelect.appendChild(o);});}';
-html+='if(synth.onvoiceschanged!==undefined)synth.onvoiceschanged=poblarVoces;poblarVoces();setTimeout(poblarVoces,500);';
+html+='function obtenerVocesEspanol(){var voces=synth.getVoices();var es=[];for(var i=0;i<voces.length;i++){if(voces[i].lang.toLowerCase().indexOf("es")===0)es.push(voces[i]);}return es;}';
+html+='function poblarVoces(){vocesCargadas=obtenerVocesEspanol();voiceSelect.innerHTML="";if(vocesCargadas.length===0){var opt=document.createElement("option");opt.textContent="(Cargando voces...)";voiceSelect.appendChild(opt);return;}vocesCargadas.forEach(function(v,i){var opt=document.createElement("option");opt.value=i;opt.textContent=v.name;voiceSelect.appendChild(opt);});}';
+html+='if(synth.onvoiceschanged!==undefined)synth.onvoiceschanged=poblarVoces;poblarVoces();setTimeout(poblarVoces,100);setTimeout(poblarVoces,300);setTimeout(poblarVoces,800);';
+html+='function asignarVoz(u){vocesCargadas=obtenerVocesEspanol();if(vocesCargadas.length===0)return false;var idx=parseInt(voiceSelect.value);if(isNaN(idx)||idx<0||idx>=vocesCargadas.length)idx=0;u.voice=vocesCargadas[idx];u.lang=vocesCargadas[idx].lang;return true;}';
 html+='function formatearTiempo(s){var m=Math.floor(s/60);var g=s%60;return(m<10?"0":"")+m+":"+(g<10?"0":"")+g;}';
 html+='function iniciarCrono(){if(cronoInterval)return;cronoInicioTramo=Date.now();cronoInterval=setInterval(function(){var t=Math.floor((Date.now()-cronoInicioTramo)/1000);timerDisplay.textContent=formatearTiempo(cronoSegundos+t);},250);}';
 html+='function pausarCrono(){if(!cronoInterval)return;var t=Math.floor((Date.now()-cronoInicioTramo)/1000);cronoSegundos+=t;clearInterval(cronoInterval);cronoInterval=null;timerDisplay.textContent=formatearTiempo(cronoSegundos);}';
 html+='function resetCrono(){if(cronoInterval){clearInterval(cronoInterval);cronoInterval=null;}cronoSegundos=0;cronoInicioTramo=0;timerDisplay.textContent="00:00";}';
-html+='function obtenerVoz(){var voces=synth.getVoices().filter(function(v){return v.lang.indexOf("es")===0;});var idx=parseInt(voiceSelect.value);if(voces.length&&!isNaN(idx))return voces[idx]||voces[0];return null;}';
-html+='function leerSiguiente(){if(bloqueado)return;if(indiceActual>=listaNodos.length){if(bucleActivo){indiceActual=0;statusEl.textContent="🔂 Bucle reiniciando...";setTimeout(leerSiguiente,300);return;}estadoReproductor="detenido";statusEl.textContent="Lectura finalizada";btnPlay.textContent="▶";btnPause.style.display="none";indiceActual=0;pausarCrono();return;}var texto=listaNodos[indiceActual];var limpio=limpiarTexto(texto);if(!limpio){indiceActual++;leerSiguiente();return;}if(utterance)synth.cancel();utterance=new SpeechSynthesisUtterance(limpio);var v=obtenerVoz();if(v)utterance.voice=v;utterance.rate=0.9;utterance.pitch=1;utterance.onend=function(){if(bloqueado)return;if(estadoReproductor!=="leyendo")return;indiceActual++;leerSiguiente();};utterance.onerror=function(e){if(bloqueado)return;if(estadoReproductor!=="leyendo")return;indiceActual++;leerSiguiente();};estadoReproductor="leyendo";synth.speak(utterance);var p=bucleActivo?"🔂 ":"🔊 ";statusEl.textContent=p+"Leyendo ("+(indiceActual+1)+"/"+listaNodos.length+")";}';
-html+='btnPlay.onclick=function(){if(estadoReproductor==="leyendo"){try{synth.pause();}catch(e){}estadoReproductor="pausado";btnPlay.textContent="▶";btnPause.style.display="inline-block";statusEl.textContent="⏸ Pausado";pausarCrono();return;}if(estadoReproductor==="pausado"){try{synth.cancel();}catch(e){}estadoReproductor="leyendo";btnPlay.textContent="⏸";btnPause.style.display="none";statusEl.textContent="🔊 Reanudando...";iniciarCrono();setTimeout(function(){leerSiguiente();},100);return;}bloqueado=false;listaNodos=prepararLista();if(!listaNodos.length){statusEl.textContent="Sin contenido";return;}indiceActual=0;resetCrono();iniciarCrono();estadoReproductor="leyendo";leerSiguiente();btnPlay.textContent="⏸";btnPause.style.display="none";};';
-html+='btnPause.onclick=function(){if(estadoReproductor==="leyendo"){try{synth.pause();}catch(e){}estadoReproductor="pausado";btnPlay.textContent="▶";btnPause.style.display="none";statusEl.textContent="⏸ Pausado";pausarCrono();}};';
-html+='btnStop.onclick=function(){bloqueado=true;estadoReproductor="detenido";try{synth.cancel();}catch(e){}utterance=null;indiceActual=0;listaNodos=[];btnPlay.textContent="▶";btnPause.style.display="none";statusEl.textContent="Detenido";resetCrono();setTimeout(function(){bloqueado=false;},100);};';
+html+='function limpiarSynth(){try{if(synth.paused)synth.resume();synth.cancel();}catch(e){}}';
+html+='function hablar(texto,onDone){if(vocesCargadas.length===0)vocesCargadas=obtenerVocesEspanol();if(vocesCargadas.length===0){statusEl.textContent="⚠ Cargando voces...";setTimeout(function(){hablar(texto,onDone);},400);return;}limpiarSynth();setTimeout(function(){try{var u=new SpeechSynthesisUtterance(texto);if(!asignarVoz(u)){statusEl.textContent="⚠ Sin voz";onDone();return;}u.rate=0.9;u.pitch=1;u.volume=1;u.onend=function(){if(estadoReproductor!=="leyendo")return;onDone();};u.onerror=function(e){console.warn("Voz error:",e);if(estadoReproductor==="leyendo")setTimeout(function(){if(estadoReproductor==="leyendo")onDone();},200);};utterance=u;synth.speak(u);}catch(e){console.error(e);onDone();}},120);}';
+html+='function leerSiguiente(){if(bloqueado)return;if(estadoReproductor!=="leyendo")return;if(indiceActual>=listaNodos.length){if(bucleActivo){indiceActual=0;statusEl.textContent="🔂 Bucle reiniciando...";setTimeout(leerSiguiente,400);return;}estadoReproductor="detenido";statusEl.textContent="Lectura finalizada";btnPlay.textContent="▶";btnPause.style.display="none";indiceActual=0;pausarCrono();return;}var texto=listaNodos[indiceActual];var limpio=limpiarTexto(texto);if(!limpio){indiceActual++;leerSiguiente();return;}var p=bucleActivo?"🔂 ":"🔊 ";statusEl.textContent=p+"Leyendo ("+(indiceActual+1)+"/"+listaNodos.length+")";hablar(limpio,function(){indiceActual++;leerSiguiente();});}';
+html+='btnPlay.onclick=function(){if(estadoReproductor==="leyendo"){estadoReproductor="pausado";limpiarSynth();btnPlay.textContent="▶";btnPause.style.display="inline-block";statusEl.textContent="⏸ Pausado";pausarCrono();return;}if(estadoReproductor==="pausado"){estadoReproductor="leyendo";btnPlay.textContent="⏸";btnPause.style.display="none";statusEl.textContent="🔊 Reanudando...";iniciarCrono();setTimeout(function(){leerSiguiente();},200);return;}bloqueado=false;listaNodos=prepararLista();if(!listaNodos.length){statusEl.textContent="Sin contenido";return;}indiceActual=0;resetCrono();iniciarCrono();estadoReproductor="leyendo";statusEl.textContent="🔊 Iniciando...";btnPlay.textContent="⏸";btnPause.style.display="none";setTimeout(function(){leerSiguiente();},200);};';
+html+='btnPause.onclick=function(){if(estadoReproductor==="leyendo"){estadoReproductor="pausado";limpiarSynth();btnPlay.textContent="▶";btnPause.style.display="none";statusEl.textContent="⏸ Pausado";pausarCrono();}};';
+html+='btnStop.onclick=function(){bloqueado=true;estadoReproductor="detenido";limpiarSynth();utterance=null;indiceActual=0;listaNodos=[];btnPlay.textContent="▶";btnPause.style.display="none";statusEl.textContent="Detenido";resetCrono();setTimeout(function(){bloqueado=false;},200);};';
 html+='btnLoop.onclick=function(){bucleActivo=!bucleActivo;btnLoop.classList.toggle("active",bucleActivo);statusEl.textContent=bucleActivo?"🔂 Bucle ACTIVADO":"🔂 Bucle desactivado";};';
 html+='document.getElementById("btnExpandir").onclick=function(){document.querySelectorAll(".children").forEach(function(c){c.classList.remove("collapsed");});document.querySelectorAll(".icon").forEach(function(i){i.textContent="▼";});};';
 html+='document.getElementById("btnColapsar").onclick=function(){document.querySelectorAll(".children").forEach(function(c){c.classList.add("collapsed");});document.querySelectorAll(".icon").forEach(function(i){i.textContent="▶";});};';
