@@ -13,6 +13,8 @@
         .btn-light { background: #f8f9fa; color: #333; }
         .btn-outline-light { background: transparent; border: 1px solid white; color: white; }
         .btn-outline-light:hover { background: rgba(255,255,255,0.2); }
+        .btn-success { background: #2ecc71; color: white; }
+        .btn-success:hover { background: #27ae60; }
         .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
         @media (max-width: 768px) { .grid { grid-template-columns: 1fr; } }
         .panel { background: white; border-radius: 12px; padding: 15px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); height: 70vh; overflow-y: auto; }
@@ -31,17 +33,35 @@
         .btn-pause:hover { background: #e67e22; }
         .btn-stop { background: #e74c3c; color: white; }
         .btn-stop:hover { background: #c0392b; }
-        .voice-panel select { padding: 5px 10px; border-radius: 8px; border: 1px solid #ccc; font-size: 13px; color: #333; background: white; max-width: 200px; }
+        .voice-panel select { padding: 5px 10px; border-radius: 8px; border: 1px solid #ccc; font-size: 13px; color: #333; background: white; max-width: 180px; }
+        .timer-display { font-family: 'Consolas', monospace; font-weight: bold; font-size: 16px; color: #2c3e6b; background: white; padding: 4px 10px; border-radius: 8px; border: 1px solid #e0e6ed; min-width: 60px; text-align: center; }
+        .timer-estimado { font-size: 11px; color: #888; }
         .voice-status { font-size: 12px; color: #666; margin-left: auto; }
+        /* Menú desplegable de acciones */
+        .dropdown { position: relative; display: inline-block; }
+        .dropdown-menu { display: none; position: absolute; right: 0; top: 100%; background: white; border: 1px solid #ddd; border-radius: 10px; min-width: 220px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 1000; padding: 8px 0; margin-top: 5px; }
+        .dropdown-menu.show { display: block; }
+        .dropdown-item { display: block; padding: 8px 16px; color: #333; text-decoration: none; cursor: pointer; font-size: 14px; white-space: nowrap; }
+        .dropdown-item:hover { background: #f0f5fa; }
+        .dropdown-item i { margin-right: 8px; color: #666; }
+        .dropdown hr { border: none; border-top: 1px solid #eee; margin: 6px 0; }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
             <h2 style="margin:0;">Nexus Acelerador</h2>
-            <div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
                 <button class="btn btn-outline-light" id="btnSumula">SÚMULA</button>
                 <button class="btn btn-outline-light" id="btnCorolario">Corolario</button>
+                <!-- MÓDULO 3: FORJA -->
+                <div class="dropdown">
+                    <button class="btn btn-success" id="dropdownBtn">Acciones ▾</button>
+                    <div class="dropdown-menu" id="dropdownMenu">
+                        <a class="dropdown-item" id="exportarHtml"><i>💾</i>Exportar HTML</a>
+                        <a class="dropdown-item" id="vistaPreviaHtml"><i>👁</i>Vista Previa HTML</a>
+                    </div>
+                </div>
                 <button class="btn btn-light" id="btnTheme">🌙</button>
             </div>
         </div>
@@ -50,12 +70,13 @@
                 <textarea id="contenido" spellcheck="false"></textarea>
             </div>
             <div class="panel">
-                <!-- MÓDULO 1: VOZ ESMERALDA -->
                 <div class="voice-panel">
                     <button class="btn-play" id="btnPlay" title="Reproducir">▶</button>
                     <button class="btn-pause" id="btnPause" title="Pausar" style="display:none;">⏸</button>
                     <button class="btn-stop" id="btnStop" title="Detener">⏹</button>
                     <select id="voiceSelect" title="Seleccionar voz"></select>
+                    <span class="timer-display" id="timerDisplay">00:00</span>
+                    <span class="timer-estimado" id="timerEstimado"></span>
                     <span class="voice-status" id="voiceStatus">Listo</span>
                 </div>
                 <div id="mapa"></div>
@@ -76,12 +97,18 @@
         var voiceSelect = document.getElementById('voiceSelect');
         var voiceStatus = document.getElementById('voiceStatus');
 
+        // ========== MÓDULO 2: CRONOS ==========
+        var timerDisplay = document.getElementById('timerDisplay');
+        var timerEstimado = document.getElementById('timerEstimado');
+
         var synth = window.speechSynthesis;
         var utterance = null;
         var listaNodos = [];
         var indiceActual = 0;
-        // ✅ BANDERA PERSISTENTE: solo se resetea al iniciar nueva lectura
         var bloqueado = false;
+        var cronoInterval = null;
+        var cronoSegundos = 0;
+        var cronoInicioTramo = 0;
 
         var ejemplo = "# Acelerador de Conocimiento\n## ¿Qué es?\n- Herramienta para estructurar ideas jerárquicamente.\n## ¿Para qué sirve?\n- Planificar cursos, proyectos.\n## Características\n### Edición en tiempo real\n### Interactividad";
 
@@ -190,9 +217,11 @@
                 var c = construir(r.id);
                 if (c) mapaDiv.appendChild(c);
             });
+
+            calcularEstimacion();
         }
 
-        // ========== MÓDULO 1: LIMPIEZA DE TEXTO ==========
+        // ========== MÓDULO 1: LIMPIEZA ==========
         function limpiarTexto(t) {
             return t
                 .replace(/^#{1,6}\s*/gm, '')
@@ -211,11 +240,10 @@
                 .trim();
         }
 
-        // ========== MÓDULO 1: POBLAR VOCES ==========
+        // ========== MÓDULO 1: VOCES ==========
         function poblarVoces() {
             var voces = synth.getVoices();
             var vocesEspanol = voces.filter(function(v) { return v.lang.indexOf('es') === 0; });
-
             voiceSelect.innerHTML = '';
             if (vocesEspanol.length === 0) {
                 var opt = document.createElement('option');
@@ -223,7 +251,6 @@
                 voiceSelect.appendChild(opt);
                 return;
             }
-
             vocesEspanol.forEach(function(v, i) {
                 var opt = document.createElement('option');
                 opt.value = i;
@@ -231,18 +258,56 @@
                 voiceSelect.appendChild(opt);
             });
         }
-
-        if (synth.onvoiceschanged !== undefined) {
-            synth.onvoiceschanged = poblarVoces;
-        }
+        if (synth.onvoiceschanged !== undefined) synth.onvoiceschanged = poblarVoces;
         poblarVoces();
         setTimeout(poblarVoces, 500);
+
+        // ========== MÓDULO 2: CRONOS ==========
+        function formatearTiempo(segundos) {
+            var min = Math.floor(segundos / 60);
+            var seg = segundos % 60;
+            return (min < 10 ? '0' : '') + min + ':' + (seg < 10 ? '0' : '') + seg;
+        }
+        function iniciarCronometro() {
+            if (cronoInterval) return;
+            cronoInicioTramo = Date.now();
+            cronoInterval = setInterval(function() {
+                var transcurrido = Math.floor((Date.now() - cronoInicioTramo) / 1000);
+                timerDisplay.textContent = formatearTiempo(cronoSegundos + transcurrido);
+            }, 250);
+        }
+        function pausarCronometro() {
+            if (!cronoInterval) return;
+            var transcurrido = Math.floor((Date.now() - cronoInicioTramo) / 1000);
+            cronoSegundos += transcurrido;
+            clearInterval(cronoInterval);
+            cronoInterval = null;
+            timerDisplay.textContent = formatearTiempo(cronoSegundos);
+        }
+        function resetearCronometro() {
+            if (cronoInterval) { clearInterval(cronoInterval); cronoInterval = null; }
+            cronoSegundos = 0;
+            cronoInicioTramo = 0;
+            timerDisplay.textContent = '00:00';
+        }
+        function calcularEstimacion() {
+            var lista = prepararLista();
+            var textoCompleto = lista.join(' ');
+            var limpio = limpiarTexto(textoCompleto);
+            if (!limpio) { timerEstimado.textContent = ''; return; }
+            var palabras = limpio.split(/\s+/).length;
+            var wpm = 175 * 0.9;
+            var minutos = palabras / wpm;
+            var segundosTotales = Math.round(minutos * 60);
+            var min = Math.floor(segundosTotales / 60);
+            var seg = segundosTotales % 60;
+            timerEstimado.textContent = '~' + min + 'm ' + (seg < 10 ? '0' : '') + seg + 's (' + palabras + ' pal.)';
+        }
 
         // ========== MÓDULO 1: PREPARAR LISTA ==========
         function prepararLista() {
             var resultado = parsear(textarea.value);
             var lista = [];
-
             function recorrer(id) {
                 var nodo = null;
                 for (var i = 0; i < resultado.nodos.length; i++) {
@@ -253,67 +318,49 @@
                 var hijos = resultado.hijosMap.get(id) || [];
                 hijos.forEach(recorrer);
             }
-
             resultado.raices.forEach(function(r) { recorrer(r.id); });
             return lista;
         }
 
         // ========== MÓDULO 1: LEER SIGUIENTE ==========
         function leerSiguiente() {
-            // ✅ Si está bloqueado, no hace nada (protección anti-reinicio)
             if (bloqueado) return;
-
             if (indiceActual >= listaNodos.length) {
                 voiceStatus.textContent = 'Lectura finalizada';
                 btnPlay.textContent = '▶';
                 btnPause.style.display = 'none';
                 indiceActual = 0;
+                pausarCronometro();
                 return;
             }
-
             var texto = listaNodos[indiceActual];
             var textoLimpio = limpiarTexto(texto);
-
-            if (!textoLimpio) {
-                indiceActual++;
-                leerSiguiente();
-                return;
-            }
-
+            if (!textoLimpio) { indiceActual++; leerSiguiente(); return; }
             if (utterance) synth.cancel();
             utterance = new SpeechSynthesisUtterance(textoLimpio);
-
             var voces = synth.getVoices();
             var vocesEspanol = voces.filter(function(v) { return v.lang.indexOf('es') === 0; });
             var idx = parseInt(voiceSelect.value);
-            if (vocesEspanol.length > 0 && !isNaN(idx)) {
-                utterance.voice = vocesEspanol[idx] || vocesEspanol[0];
-            }
+            if (vocesEspanol.length > 0 && !isNaN(idx)) utterance.voice = vocesEspanol[idx] || vocesEspanol[0];
             utterance.rate = 0.9;
             utterance.pitch = 1;
             utterance.lang = 'es-ES';
-
             utterance.onend = function() {
-                // ✅ Verificar bloqueo antes de continuar
                 if (bloqueado) return;
                 indiceActual++;
                 leerSiguiente();
             };
-
             utterance.onerror = function(e) {
                 if (bloqueado) return;
-                console.warn('Error de voz:', e);
                 indiceActual++;
                 leerSiguiente();
             };
-
             synth.speak(utterance);
             voiceStatus.textContent = '🔊 Leyendo (' + (indiceActual + 1) + '/' + listaNodos.length + ')';
         }
 
-        // ========== MÓDULO 1: DETENER (con bandera persistente) ==========
+        // ========== MÓDULO 1: DETENER ==========
         function detenerLectura() {
-            // ✅ Activar bandera ANTES de cancelar. NO se resetea con timeout.
             bloqueado = true;
             synth.cancel();
             utterance = null;
@@ -322,24 +369,24 @@
             btnPlay.textContent = '▶';
             btnPause.style.display = 'none';
             voiceStatus.textContent = 'Detenido';
+            resetearCronometro();
         }
 
         // ========== MÓDULO 1: PLAY ==========
         btnPlay.addEventListener('click', function() {
             if (synth.speaking && !synth.paused) {
-                // Está hablando: pausar
                 synth.pause();
                 btnPlay.textContent = '▶';
                 btnPause.style.display = 'inline-block';
                 voiceStatus.textContent = '⏸ Pausado';
+                pausarCronometro();
             } else if (synth.paused) {
-                // Reanudar
                 synth.resume();
                 btnPlay.textContent = '⏸';
                 btnPause.style.display = 'none';
                 voiceStatus.textContent = '🔊 Reanudando...';
+                iniciarCronometro();
             } else {
-                // ✅ Iniciar desde cero: AQUÍ es el ÚNICO lugar donde se desbloquea
                 bloqueado = false;
                 listaNodos = prepararLista();
                 if (listaNodos.length === 0) {
@@ -347,23 +394,22 @@
                     return;
                 }
                 indiceActual = 0;
+                resetearCronometro();
+                iniciarCronometro();
                 leerSiguiente();
                 btnPlay.textContent = '⏸';
                 btnPause.style.display = 'none';
             }
         });
-
-        // ========== MÓDULO 1: PAUSA EXPLÍCITA ==========
         btnPause.addEventListener('click', function() {
             if (synth.speaking) {
                 synth.pause();
                 btnPlay.textContent = '▶';
                 btnPause.style.display = 'none';
                 voiceStatus.textContent = '⏸ Pausado';
+                pausarCronometro();
             }
         });
-
-        // ========== MÓDULO 1: STOP ==========
         btnStop.addEventListener('click', function() {
             detenerLectura();
             voiceStatus.textContent = '⏹ Detenido';
@@ -371,14 +417,10 @@
 
         // ========== EVENTOS DEL NÚCLEO ==========
         textarea.addEventListener('input', function() {
-            // ✅ Detener lectura al editar (si está activa)
-            if (synth.speaking || synth.paused) {
-                detenerLectura();
-            }
+            if (synth.speaking || synth.paused) detenerLectura();
             localStorage.setItem('nexus_contenido', textarea.value);
             generarMapa();
         });
-
         generarMapa();
 
         document.getElementById('btnSumula').addEventListener('click', function() {
@@ -390,7 +432,6 @@
                 generarMapa();
             }
         });
-
         document.getElementById('btnCorolario').addEventListener('click', function() {
             if (synth.speaking || synth.paused) detenerLectura();
             var corolario = "# Corolario Pedagógico\n## ¿Qué es?\n- Síntesis didáctica.\n## ¿Para qué sirve?\n- Guía práctica.\n## Características\n### La Fundación\n#### Detalles\n- Sin un Maestro Perfecto es imposible recibir el Naam.";
@@ -398,15 +439,291 @@
             localStorage.setItem('nexus_contenido', corolario);
             generarMapa();
         });
-
         document.getElementById('btnTheme').addEventListener('click', function() {
             document.body.classList.toggle('dark-theme');
             if (!document.getElementById('darkStyle')) {
                 var style = document.createElement('style');
                 style.id = 'darkStyle';
-                style.textContent = 'body.dark-theme{background:#1e1e2e;color:#e0e0e0}body.dark-theme .panel{background:#2a2a3c;color:#e0e0e0}body.dark-theme textarea{background:#2a2a3c;color:#e0e0e0}body.dark-theme .node{background:#333;color:#fff}body.dark-theme .node:hover{background:#444}body.dark-theme .voice-panel{background:#2a2a3c;border-color:#3a3a4c}body.dark-theme .voice-panel select{background:#333;color:#fff;border-color:#555}body.dark-theme .voice-status{color:#aaa}';
+                style.textContent = 'body.dark-theme{background:#1e1e2e;color:#e0e0e0}body.dark-theme .panel{background:#2a2a3c;color:#e0e0e0}body.dark-theme textarea{background:#2a2a3c;color:#e0e0e0}body.dark-theme .node{background:#333;color:#fff}body.dark-theme .node:hover{background:#444}body.dark-theme .voice-panel{background:#2a2a3c;border-color:#3a3a4c}body.dark-theme .voice-panel select{background:#333;color:#fff;border-color:#555}body.dark-theme .voice-status{color:#aaa}body.dark-theme .timer-display{background:#333;color:#fff;border-color:#555}body.dark-theme .timer-estimado{color:#aaa}body.dark-theme .dropdown-menu{background:#2a2a3c;border-color:#3a3a4c}body.dark-theme .dropdown-item{color:#e0e0e0}body.dark-theme .dropdown-item:hover{background:#35355a}';
                 document.head.appendChild(style);
             }
+        });
+
+        // ============================================================
+        // MÓDULO 3: FORJA (Exportación HTML + Vista Previa)
+        // ============================================================
+        
+        // Dropdown
+        var dropdownBtn = document.getElementById('dropdownBtn');
+        var dropdownMenu = document.getElementById('dropdownMenu');
+        dropdownBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            dropdownMenu.classList.toggle('show');
+        });
+        document.addEventListener('click', function() {
+            dropdownMenu.classList.remove('show');
+        });
+
+        // Función generadora del HTML exportado
+        function generarHTMLExportado(texto, titulo) {
+            // Escapar el contenido para que sea seguro dentro de <script type="text/plain">
+            var contenidoSeguro = texto.replace(/<\//g, '<\\/');
+            
+            // Tag de apertura y cierre de script, construidos para no romper el script padre
+            var tagScriptOpen = '<' + 'script>';
+            var tagScriptClose = '<' + '/script>';
+            var tagPlainOpen = '<' + 'script type="text/plain" id="raw-content">';
+            var tagPlainClose = '<' + '/script>';
+            
+            var html = '';
+            html += '<!DOCTYPE html>';
+            html += '<html lang="es"><head><meta charset="UTF-8">';
+            html += '<meta name="viewport" content="width=device-width, initial-scale=1.0">';
+            html += '<title>' + titulo + '</title>';
+            html += '<style>';
+            html += '* { box-sizing: border-box; }';
+            html += 'body { font-family: "Segoe UI", sans-serif; background: #f4f7fc; color: #333; padding: 20px; margin: 0; }';
+            html += '.container { max-width: 900px; margin: auto; }';
+            html += '.header { background: linear-gradient(135deg, #1a2a4a, #2c3e6b); color: white; padding: 15px; border-radius: 12px; margin-bottom: 20px; }';
+            html += '.header h1 { margin: 0; font-size: 1.5rem; }';
+            html += '.toolbar { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; align-items: center; }';
+            html += '.toolbar button { border: none; border-radius: 8px; padding: 8px 14px; cursor: pointer; font-size: 14px; font-weight: bold; }';
+            html += '.btn-play { background: #2ecc71; color: white; }';
+            html += '.btn-play:hover { background: #27ae60; }';
+            html += '.btn-pause { background: #f39c12; color: white; }';
+            html += '.btn-pause:hover { background: #e67e22; }';
+            html += '.btn-stop { background: #e74c3c; color: white; }';
+            html += '.btn-stop:hover { background: #c0392b; }';
+            html += '.btn-light { background: #f8f9fa; color: #333; border: 1px solid #ccc; }';
+            html += '.btn-light:hover { background: #e9ecef; }';
+            html += '.timer-display { font-family: "Consolas", monospace; font-weight: bold; font-size: 16px; color: #2c3e6b; background: white; padding: 6px 12px; border-radius: 8px; border: 1px solid #e0e6ed; min-width: 70px; text-align: center; }';
+            html += '.timer-estimado { font-size: 11px; color: #888; }';
+            html += '.status { font-size: 12px; color: #666; margin-left: auto; }';
+            html += 'select { padding: 6px 10px; border-radius: 8px; border: 1px solid #ccc; font-size: 13px; background: white; }';
+            html += '.node { border-left: 5px solid #3498db; padding: 10px 14px; margin-bottom: 6px; cursor: pointer; background: white; border-radius: 6px; font-size: 14px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }';
+            html += '.node:hover { background: #f0f5fa; }';
+            html += '.node.level-0 { border-left-color: #e67e22; background: #fef5e7; }';
+            html += '.node.level-1 { border-left-color: #3498db; }';
+            html += '.node.level-2 { border-left-color: #2ecc71; }';
+            html += '.node.level-3 { border-left-color: #9b59b6; }';
+            html += '.node.level-4 { border-left-color: #e74c3c; }';
+            html += '.children { margin-left: 20px; border-left: 2px dashed #ddd; padding-left: 12px; margin-top: 6px; }';
+            html += '.collapsed { display: none; }';
+            html += '.icon { font-size: 0.8rem; opacity: 0.6; margin-left: 8px; }';
+            html += '.search-box { display: flex; align-items: center; background: white; border-radius: 20px; padding: 4px 12px; border: 1px solid #ddd; margin-bottom: 10px; }';
+            html += '.search-box input { border: none; outline: none; flex: 1; padding: 6px; font-size: 14px; background: transparent; }';
+            html += '.search-box button { border: none; background: transparent; cursor: pointer; font-size: 16px; color: #888; }';
+            html += 'body.dark { background: #1e1e2e; color: #e0e0e0; }';
+            html += 'body.dark .header { background: linear-gradient(135deg, #0d1b2a, #1b263b); }';
+            html += 'body.dark .node { background: #2a2a3c; color: #e0e0e0; }';
+            html += 'body.dark .node:hover { background: #35355a; }';
+            html += 'body.dark .node.level-0 { background: #3d2e1c; }';
+            html += 'body.dark .timer-display { background: #333; color: #fff; border-color: #555; }';
+            html += 'body.dark .search-box { background: #2a2a3c; border-color: #3a3a4c; }';
+            html += 'body.dark .search-box input { color: #e0e0e0; }';
+            html += 'body.dark select { background: #333; color: #fff; border-color: #555; }';
+            html += 'body.dark .status { color: #aaa; }';
+            html += 'body.dark .timer-estimado { color: #aaa; }';
+            html += 'body.dark .children { border-left-color: #3a3a4c; }';
+            html += 'body.dark .btn-light { background: #333; color: #fff; border-color: #555; }';
+            html += '</style></head><body>';
+            html += '<div class="container">';
+            html += '<div class="header"><h1>' + titulo + '</h1></div>';
+            html += '<div class="toolbar">';
+            html += '<button class="btn-play" id="btnPlay">▶</button>';
+            html += '<button class="btn-pause" id="btnPause" style="display:none">⏸</button>';
+            html += '<button class="btn-stop" id="btnStop">⏹</button>';
+            html += '<select id="voiceSelect"></select>';
+            html += '<span class="timer-display" id="timerDisplay">00:00</span>';
+            html += '<span class="timer-estimado" id="timerEstimado"></span>';
+            html += '<span class="status" id="status">Listo</span>';
+            html += '</div>';
+            html += '<div class="toolbar">';
+            html += '<button class="btn-light" id="btnExpandir">Expandir Todo</button>';
+            html += '<button class="btn-light" id="btnColapsar">Colapsar Todo</button>';
+            html += '<button class="btn-light" id="btnTheme">🌙 Modo Oscuro</button>';
+            html += '</div>';
+            html += '<div class="search-box"><input type="text" id="searchInput" placeholder="Buscar..."><button id="clearSearch">✕</button></div>';
+            html += '<div id="mapa"></div>';
+            html += '</div>';
+            
+            // Contenido del documento (texto plano seguro)
+            html += tagPlainOpen;
+            html += contenidoSeguro;
+            html += tagPlainClose;
+            
+            // Script con toda la lógica
+            html += tagScriptOpen;
+            html += '(function(){';
+            html += 'var raw = document.getElementById("raw-content").textContent;';
+            html += 'var synth = window.speechSynthesis;';
+            html += 'var utterance = null, listaNodos = [], indiceActual = 0, bloqueado = false;';
+            html += 'var cronoInterval = null, cronoSegundos = 0, cronoInicioTramo = 0;';
+            html += 'var btnPlay = document.getElementById("btnPlay");';
+            html += 'var btnPause = document.getElementById("btnPause");';
+            html += 'var btnStop = document.getElementById("btnStop");';
+            html += 'var voiceSelect = document.getElementById("voiceSelect");';
+            html += 'var statusEl = document.getElementById("status");';
+            html += 'var timerDisplay = document.getElementById("timerDisplay");';
+            html += 'var timerEstimado = document.getElementById("timerEstimado");';
+            html += 'var mapaDiv = document.getElementById("mapa");';
+            
+            // Incluir el parser
+            var parserFn = parsear.toString();
+            html += 'var parsear = ' + parserFn + ';';
+            // Incluir limpiarTexto
+            var limpiarFn = limpiarTexto.toString();
+            html += 'var limpiarTexto = ' + limpiarFn + ';';
+            // Incluir prepararLista (versión local)
+            html += 'function prepararLista(){';
+            html += 'var res = parsear(raw); var lista = [];';
+            html += 'function rec(id){var nodo = null; for(var i=0;i<res.nodos.length;i++){if(res.nodos[i].id===id){nodo=res.nodos[i];break;}} if(!nodo) return; lista.push(nodo.etiqueta); var hijos = res.hijosMap.get(id)||[]; hijos.forEach(rec);}';
+            html += 'res.raices.forEach(function(r){rec(r.id);});';
+            html += 'return lista;';
+            html += '}';
+            
+            // Renderizado
+            html += 'function generarMapa(){';
+            html += 'var res = parsear(raw);';
+            html += 'var nodosMap = new Map(); res.nodos.forEach(function(n){nodosMap.set(n.id,n);});';
+            html += 'var hijosMap = res.hijosMap;';
+            html += 'mapaDiv.innerHTML = "";';
+            html += 'if(!res.raices.length){mapaDiv.innerHTML = "<div style=\\"text-align:center;color:#999;padding:40px;\\">Sin contenido</div>"; return;}';
+            html += 'function construir(id){';
+            html += 'var nodo = nodosMap.get(id); if(!nodo) return null;';
+            html += 'var hijos = hijosMap.get(id)||[];';
+            html += 'var card = document.createElement("div");';
+            html += 'card.className = "node level-" + Math.min(nodo.nivel, 4);';
+            html += 'var span = document.createElement("span"); span.textContent = nodo.etiqueta; card.appendChild(span);';
+            html += 'if(hijos.length){';
+            html += 'var icon = document.createElement("span"); icon.className = "icon"; icon.textContent = "▶"; card.appendChild(icon);';
+            html += 'var cont = document.createElement("div"); cont.className = "children collapsed";';
+            html += 'hijos.forEach(function(h){var c = construir(h); if(c) cont.appendChild(c);});';
+            html += 'card.appendChild(cont);';
+            html += 'card.onclick = function(e){e.stopPropagation(); cont.classList.toggle("collapsed"); icon.textContent = cont.classList.contains("collapsed") ? "▶" : "▼";};';
+            html += '}';
+            html += 'return card;';
+            html += '}';
+            html += 'res.raices.forEach(function(r){var c = construir(r.id); if(c) mapaDiv.appendChild(c);});';
+            html += 'calcularEstimacion();';
+            html += '}';
+            
+            // Estimación
+            html += 'function calcularEstimacion(){';
+            html += 'var lista = prepararLista();';
+            html += 'var limpio = limpiarTexto(lista.join(" "));';
+            html += 'if(!limpio){timerEstimado.textContent = ""; return;}';
+            html += 'var palabras = limpio.split(/\\s+/).length;';
+            html += 'var segundosTotales = Math.round((palabras/(175*0.9))*60);';
+            html += 'var min = Math.floor(segundosTotales/60); var seg = segundosTotales%60;';
+            html += 'timerEstimado.textContent = "~" + min + "m " + (seg<10?"0":"") + seg + "s (" + palabras + " pal.)";';
+            html += '}';
+            
+            // Voces
+            html += 'function poblarVoces(){';
+            html += 'var voces = synth.getVoices().filter(function(v){return v.lang.indexOf("es")===0;});';
+            html += 'voiceSelect.innerHTML = "";';
+            html += 'voces.forEach(function(v,i){var o = document.createElement("option"); o.value = i; o.textContent = v.name; voiceSelect.appendChild(o);});';
+            html += '}';
+            html += 'if(synth.onvoiceschanged !== undefined) synth.onvoiceschanged = poblarVoces;';
+            html += 'poblarVoces(); setTimeout(poblarVoces, 500);';
+            
+            // Cronómetro
+            html += 'function formatearTiempo(s){var m=Math.floor(s/60);var g=s%60;return (m<10?"0":"")+m+":"+(g<10?"0":"")+g;}';
+            html += 'function iniciarCrono(){if(cronoInterval) return;cronoInicioTramo=Date.now();cronoInterval=setInterval(function(){var t=Math.floor((Date.now()-cronoInicioTramo)/1000);timerDisplay.textContent=formatearTiempo(cronoSegundos+t);},250);}';
+            html += 'function pausarCrono(){if(!cronoInterval) return;var t=Math.floor((Date.now()-cronoInicioTramo)/1000);cronoSegundos+=t;clearInterval(cronoInterval);cronoInterval=null;timerDisplay.textContent=formatearTiempo(cronoSegundos);}';
+            html += 'function resetCrono(){if(cronoInterval){clearInterval(cronoInterval);cronoInterval=null;}cronoSegundos=0;cronoInicioTramo=0;timerDisplay.textContent="00:00";}';
+            
+            // Lectura
+            html += 'function leerSiguiente(){';
+            html += 'if(bloqueado) return;';
+            html += 'if(indiceActual>=listaNodos.length){';
+            html += 'statusEl.textContent = "Lectura finalizada";';
+            html += 'btnPlay.textContent = "▶"; btnPause.style.display = "none"; indiceActual = 0; pausarCrono(); return;';
+            html += '}';
+            html += 'var texto = listaNodos[indiceActual];';
+            html += 'var limpio = limpiarTexto(texto);';
+            html += 'if(!limpio){indiceActual++;leerSiguiente();return;}';
+            html += 'if(utterance) synth.cancel();';
+            html += 'utterance = new SpeechSynthesisUtterance(limpio);';
+            html += 'var voces = synth.getVoices().filter(function(v){return v.lang.indexOf("es")===0;});';
+            html += 'var idx = parseInt(voiceSelect.value);';
+            html += 'if(voces.length && !isNaN(idx)) utterance.voice = voces[idx] || voces[0];';
+            html += 'utterance.rate = 0.9; utterance.pitch = 1; utterance.lang = "es-ES";';
+            html += 'utterance.onend = function(){if(bloqueado) return; indiceActual++; leerSiguiente();};';
+            html += 'utterance.onerror = function(){if(bloqueado) return; indiceActual++; leerSiguiente();};';
+            html += 'synth.speak(utterance);';
+            html += 'statusEl.textContent = "🔊 Leyendo (" + (indiceActual+1) + "/" + listaNodos.length + ")";';
+            html += '}';
+            
+            // Play/Pausa/Stop
+            html += 'btnPlay.onclick = function(){';
+            html += 'if(synth.speaking && !synth.paused){synth.pause();btnPlay.textContent="▶";btnPause.style.display="inline-block";statusEl.textContent="⏸ Pausado";pausarCrono();}';
+            html += 'else if(synth.paused){synth.resume();btnPlay.textContent="⏸";btnPause.style.display="none";statusEl.textContent="🔊 Reanudando...";iniciarCrono();}';
+            html += 'else{bloqueado=false;listaNodos=prepararLista();if(!listaNodos.length){statusEl.textContent="Sin contenido";return;}indiceActual=0;resetCrono();iniciarCrono();leerSiguiente();btnPlay.textContent="⏸";btnPause.style.display="none";}';
+            html += '};';
+            html += 'btnPause.onclick = function(){if(synth.speaking){synth.pause();btnPlay.textContent="▶";btnPause.style.display="none";statusEl.textContent="⏸ Pausado";pausarCrono();}};';
+            html += 'btnStop.onclick = function(){bloqueado=true;synth.cancel();utterance=null;indiceActual=0;listaNodos=[];btnPlay.textContent="▶";btnPause.style.display="none";statusEl.textContent="Detenido";resetCrono();};';
+            
+            // Expandir/Colapsar
+            html += 'document.getElementById("btnExpandir").onclick = function(){document.querySelectorAll(".children").forEach(function(c){c.classList.remove("collapsed");});document.querySelectorAll(".icon").forEach(function(i){i.textContent="▼";});};';
+            html += 'document.getElementById("btnColapsar").onclick = function(){document.querySelectorAll(".children").forEach(function(c){c.classList.add("collapsed");});document.querySelectorAll(".icon").forEach(function(i){i.textContent="▶";});};';
+            
+            // Tema
+            html += 'document.getElementById("btnTheme").onclick = function(){document.body.classList.toggle("dark");this.textContent = document.body.classList.contains("dark") ? "☀ Claro" : "🌙 Modo Oscuro";};';
+            
+            // Búsqueda
+            html += 'document.getElementById("searchInput").oninput = function(){var term = this.value.toLowerCase().trim();document.querySelectorAll(".node").forEach(function(n){var ok = !term || n.textContent.toLowerCase().indexOf(term) !== -1; n.style.display = ok ? "" : "none";});};';
+            html += 'document.getElementById("clearSearch").onclick = function(){document.getElementById("searchInput").value="";document.querySelectorAll(".node").forEach(function(n){n.style.display="";});};';
+            
+            // Inicializar
+            html += 'generarMapa();';
+            html += '})();';
+            html += tagScriptClose;
+            
+            html += '</body></html>';
+            
+            return html;
+        }
+
+        // ========== EXPORTAR HTML ==========
+        document.getElementById('exportarHtml').addEventListener('click', function() {
+            var texto = textarea.value;
+            if (!texto.trim()) {
+                alert('No hay contenido para exportar');
+                return;
+            }
+            var resultado = parsear(texto);
+            var titulo = resultado.raices.length > 0 ? resultado.raices[0].etiqueta : 'Documento';
+            var html = generarHTMLExportado(texto, titulo);
+            
+            var blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+            var a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = titulo.replace(/[^a-z0-9]/gi, '_').substring(0, 50) + '.html';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(a.href);
+            
+            voiceStatus.textContent = '✅ HTML exportado';
+        });
+
+        // ========== VISTA PREVIA HTML ==========
+        document.getElementById('vistaPreviaHtml').addEventListener('click', function() {
+            var texto = textarea.value;
+            if (!texto.trim()) {
+                alert('No hay contenido para previsualizar');
+                return;
+            }
+            var resultado = parsear(texto);
+            var titulo = resultado.raices.length > 0 ? resultado.raices[0].etiqueta : 'Documento';
+            var html = generarHTMLExportado(texto, titulo);
+            
+            var ventana = window.open('', '_blank');
+            ventana.document.open();
+            ventana.document.write(html);
+            ventana.document.close();
         });
 
     })();
