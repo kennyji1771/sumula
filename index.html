@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Nexus Acelerador</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <style>
         body { font-family: 'Segoe UI', sans-serif; background: #f4f7fc; color: #333; padding: 20px; }
         .container { max-width: 1200px; margin: auto; }
@@ -16,12 +15,12 @@
         .btn-outline-light:hover { background: rgba(255,255,255,0.2); }
         .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
         .panel { background: white; border-radius: 12px; padding: 15px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
-        textarea { width: 100%; height: 70vh; border: none; outline: none; font-family: monospace; font-size: 14px; resize: none; }
+        textarea { width: 100%; height: 70vh; border: none; outline: none; font-family: monospace; font-size: 14px; resize: none; color: #212529; background: #fff; }
         .node { border-left: 5px solid #3498db; padding: 8px; margin-bottom: 5px; cursor: pointer; background: #fafafa; border-radius: 6px; }
         .node:hover { background: #f0f0f0; }
-        .children { margin-left: 20px; border-left: 2px dashed #ddd; padding-left: 10px; }
+        .children { margin-left: 20px; border-left: 2px dashed #ddd; padding-left: 10px; margin-top: 5px; }
         .collapsed { display: none; }
-        .icon { font-size: 0.8rem; opacity: 0.6; }
+        .icon { font-size: 0.8rem; opacity: 0.6; margin-left: 5px; }
     </style>
 </head>
 <body>
@@ -32,7 +31,7 @@
             <div>
                 <button class="btn btn-outline-light" id="btnSumula">SÚMULA</button>
                 <button class="btn btn-outline-light" id="btnCorolario">Corolario</button>
-                <button class="btn btn-outline-light" onclick="document.getElementById('exportarHtml').click()">Exportar HTML</button>
+                <button class="btn btn-outline-light" id="btnExportar">Exportar HTML</button>
                 <button class="btn btn-light" id="btnTheme">🌙</button>
             </div>
         </div>
@@ -52,83 +51,90 @@
     <script>
     (function() {
         // Elementos
-        const textarea = document.getElementById('contenido');
-        const mapaDiv = document.getElementById('mapa');
+        var textarea = document.getElementById('contenido');
+        var mapaDiv = document.getElementById('mapa');
 
-        // Ejemplo por defecto
-        const ejemplo = `# Acelerador de Conocimiento
-## ¿Qué es?
-- Herramienta para estructurar ideas jerárquicamente.
-## ¿Para qué sirve?
-- Planificar cursos, proyectos.
-## Características
-### Edición en tiempo real
-### Interactividad`;
+        // Contenido por defecto
+        var ejemplo = "# Acelerador de Conocimiento\n## ¿Qué es?\n- Herramienta para estructurar ideas jerárquicamente.\n## ¿Para qué sirve?\n- Planificar cursos, proyectos.\n## Características\n### Edición en tiempo real\n### Interactividad";
 
-        // Cargar contenido guardado o ejemplo
+        // Cargar contenido
         textarea.value = localStorage.getItem('nexus_contenido') || ejemplo;
-
-        // Guardar cambios
-        textarea.addEventListener('input', () => {
-            localStorage.setItem('nexus_contenido', textarea.value);
-            generarMapa();
-        });
 
         // Función de parseo
         function parsear(texto) {
-            const lineas = texto.split('\n');
-            const nodos = [];
-            let pila = [];
-            let id = 1;
-            for (let linea of lineas) {
-                linea = linea.trim();
+            var lineas = texto.split('\n');
+            var nodos = [];
+            var pila = [];
+            var id = 1;
+
+            // Si no hay marcadores markdown, tratar todo como un solo nodo
+            var tieneMarkdown = /^(#{1,6}\s|[-*]\s)/m.test(texto);
+            
+            if (!tieneMarkdown) {
+                // Mostrar el texto completo como un solo nodo raíz
+                nodos.push({ id: 1, etiqueta: texto.trim().substring(0, 100) + (texto.length > 100 ? '...' : ''), nivel: 0, padreId: null });
+                var hijosMap = new Map();
+                hijosMap.set(1, []);
+                return { nodos: nodos, hijosMap: hijosMap, raices: [nodos[0]] };
+            }
+
+            for (var i = 0; i < lineas.length; i++) {
+                var linea = lineas[i].trim();
                 if (!linea) continue;
-                let nivel = -1;
-                let etiqueta = linea;
-                if (linea.startsWith('# ')) { nivel = 0; etiqueta = linea.slice(2); }
-                else if (linea.startsWith('## ')) { nivel = 1; etiqueta = linea.slice(3); }
-                else if (linea.startsWith('### ')) { nivel = 2; etiqueta = linea.slice(4); }
-                else if (linea.startsWith('- ')) { nivel = pila.length ? pila[pila.length-1].nivel + 1 : 1; etiqueta = linea.slice(2); }
+                var nivel = -1;
+                var etiqueta = linea;
+                if (linea.indexOf('# ') === 0) { nivel = 0; etiqueta = linea.slice(2); }
+                else if (linea.indexOf('## ') === 0) { nivel = 1; etiqueta = linea.slice(3); }
+                else if (linea.indexOf('### ') === 0) { nivel = 2; etiqueta = linea.slice(4); }
+                else if (linea.indexOf('- ') === 0 || linea.indexOf('* ') === 0) { nivel = pila.length ? pila[pila.length-1].nivel + 1 : 1; etiqueta = linea.slice(2); }
                 else { nivel = pila.length ? pila[pila.length-1].nivel + 1 : 1; etiqueta = linea; }
 
                 while (pila.length && pila[pila.length-1].nivel >= nivel) pila.pop();
-                const padreId = pila.length ? pila[pila.length-1].id : null;
-                nodos.push({ id: id, etiqueta, nivel, padreId });
-                pila.push({ id: id, nivel });
+                var padreId = pila.length ? pila[pila.length-1].id : null;
+                nodos.push({ id: id, etiqueta: etiqueta, nivel: nivel, padreId: padreId });
+                pila.push({ id: id, nivel: nivel });
                 id++;
             }
-            const hijosMap = new Map();
-            nodos.forEach(n => hijosMap.set(n.id, []));
-            nodos.forEach(n => { if (n.padreId) hijosMap.get(n.padreId).push(n.id); });
-            return { nodos, hijosMap, raices: nodos.filter(n => n.padreId === null) };
+
+            var hijosMap = new Map();
+            nodos.forEach(function(n) { hijosMap.set(n.id, []); });
+            nodos.forEach(function(n) { if (n.padreId) hijosMap.get(n.padreId).push(n.id); });
+            
+            return { nodos: nodos, hijosMap: hijosMap, raices: nodos.filter(function(n) { return n.padreId === null; }) };
         }
 
         // Función de renderizado
         function generarMapa() {
-            const { nodos, hijosMap, raices } = parsear(textarea.value);
-            const nodosMap = new Map(nodos.map(n => [n.id, n]));
+            var resultado = parsear(textarea.value);
+            var nodos = resultado.nodos;
+            var hijosMap = resultado.hijosMap;
+            var raices = resultado.raices;
+            var nodosMap = new Map(nodos.map(function(n) { return [n.id, n]; }));
+            
             mapaDiv.innerHTML = '';
 
             function construir(id) {
-                const nodo = nodosMap.get(id);
+                var nodo = nodosMap.get(id);
                 if (!nodo) return null;
-                const hijos = hijosMap.get(id) || [];
-                const card = document.createElement('div');
+                var hijos = hijosMap.get(id) || [];
+                var card = document.createElement('div');
                 card.className = 'node';
-                card.innerHTML = `<span>${nodo.etiqueta}</span>`;
+                card.textContent = nodo.etiqueta;
+
                 if (hijos.length) {
-                    const icon = document.createElement('span');
+                    var icon = document.createElement('span');
                     icon.className = 'icon';
                     icon.textContent = '▶';
                     card.appendChild(icon);
-                    const cont = document.createElement('div');
+                    var cont = document.createElement('div');
                     cont.className = 'children collapsed';
-                    hijos.forEach(h => {
-                        const c = construir(h);
+                    hijos.forEach(function(h) {
+                        var c = construir(h);
                         if (c) cont.appendChild(c);
                     });
                     card.appendChild(cont);
-                    card.onclick = () => {
+                    card.onclick = function(e) {
+                        e.stopPropagation();
                         cont.classList.toggle('collapsed');
                         icon.textContent = cont.classList.contains('collapsed') ? '▶' : '▼';
                     };
@@ -136,18 +142,24 @@
                 return card;
             }
 
-            raices.forEach(r => {
-                const c = construir(r.id);
+            raices.forEach(function(r) {
+                var c = construir(r.id);
                 if (c) mapaDiv.appendChild(c);
             });
         }
 
-        // Generar mapa inicial
+        // Guardar y regenerar mapa
+        textarea.addEventListener('input', function() {
+            localStorage.setItem('nexus_contenido', textarea.value);
+            generarMapa();
+        });
+
+        // Inicializar
         generarMapa();
 
-        // Botón SÚMULA (abre un prompt simple para pegar texto)
-        document.getElementById('btnSumula').addEventListener('click', () => {
-            const texto = prompt("Pega tu texto aquí:");
+        // Botón SÚMULA
+        document.getElementById('btnSumula').addEventListener('click', function() {
+            var texto = prompt("Pega tu texto aquí:");
             if (texto) {
                 textarea.value = texto;
                 localStorage.setItem('nexus_contenido', texto);
@@ -155,50 +167,52 @@
             }
         });
 
-        // Botón Corolario (carga un texto básico)
-        document.getElementById('btnCorolario').addEventListener('click', () => {
-            const corolario = `# Corolario Pedagógico
-## ¿Qué es?
-- Síntesis didáctica.
-## ¿Para qué sirve?
-- Guía práctica.
-## Características
-### La Fundación
-#### Detalles
-- Sin un Maestro Perfecto es imposible recibir el Naam.`;
+        // Botón Corolario
+        document.getElementById('btnCorolario').addEventListener('click', function() {
+            var corolario = "# Corolario Pedagógico\n## ¿Qué es?\n- Síntesis didáctica.\n## ¿Para qué sirve?\n- Guía práctica.\n## Características\n### La Fundación\n#### Detalles\n- Sin un Maestro Perfecto es imposible recibir el Naam.";
             textarea.value = corolario;
             localStorage.setItem('nexus_contenido', corolario);
             generarMapa();
         });
 
         // Botón tema oscuro
-        document.getElementById('btnTheme').addEventListener('click', () => {
+        document.getElementById('btnTheme').addEventListener('click', function() {
             document.body.classList.toggle('dark-theme');
-            // Añadir estilos para dark mode si no existen
             if (!document.querySelector('style#darkStyle')) {
-                const style = document.createElement('style');
+                var style = document.createElement('style');
                 style.id = 'darkStyle';
-                style.textContent = 'body.dark-theme { background: #1e1e2e; color: #e0e0e0; } .panel { background: #2a2a3c; color: #e0e0e0; } .node { background: #333; color: #fff; }';
+                style.textContent = 'body.dark-theme { background: #1e1e2e; color: #e0e0e0; } body.dark-theme .panel { background: #2a2a3c; color: #e0e0e0; } body.dark-theme textarea { background: #2a2a3c; color: #e0e0e0; } body.dark-theme .node { background: #333; color: #fff; }';
                 document.head.appendChild(style);
             }
         });
 
-        // Exportar HTML (versión simple con el mapa)
-        document.getElementById('exportarHtml').addEventListener('click', () => {
-            const contenido = textarea.value;
-            const titulo = "Documento";
-            const html = `<!DOCTYPE html>
-<html lang="es">
-<head><meta charset="UTF-8"><title>${titulo}</title>
-<style>body{font-family:sans-serif;padding:20px}.node{border-left:5px solid #3498db;padding:8px;margin-bottom:5px;cursor:pointer;background:#fafafa}.children{margin-left:20px;border-left:2px dashed #ccc;padding-left:10px}.collapsed{display:none}</style>
-</head>
-<body><div id="mapa"></div><script>
-const t = ${JSON.stringify(contenido)};
-function parsear(t){const l=t.split("\\n");let p=[],id=1,n=[];for(let i of l){i=i.trim();if(!i)continue;let v=-1,e=i;if(i.startsWith("# "))v=0,e=i.slice(2);else if(i.startsWith("## "))v=1,e=i.slice(3);else if(i.startsWith("### "))v=2,e=i.slice(4);else if(i.startsWith("- ")){v=p.length?p[p.length-1].v+1:1;e=i.slice(2)}else{v=p.length?p[p.length-1].v+1:1;e=i}while(p.length&&p[p.length-1].v>=v)p.pop();const pId=p.length?p[p.length-1].id:null;n.push({id,v,e,pId});p.push({id:id++,v})}const h=new Map();n.forEach(x=>h.set(x.id,[]));n.forEach(x=>{if(x.pId)h.get(x.pId).push(x.id)});return{n,h,r:n.filter(x=>x.pId===null)}};
-const d=parsear(t);function construir(id){const x=d.n.find(y=>y.id===id);if(!x)return null;const c=document.createElement("div");c.className="node";c.innerHTML=x.e;const h=d.h.get(id)||[];if(h.length){const cc=document.createElement("div");cc.className="children collapsed";h.forEach(y=>{const z=construir(y);if(z)cc.appendChild(z)});c.appendChild(cc);c.onclick=()=>cc.classList.toggle("collapsed")}return c}const m=document.getElementById("mapa");d.r.forEach(r=>m.appendChild(construir(r.id)));
-</script></body></html>`;
-            const blob = new Blob([html], { type: 'text/html' });
-            const a = document.createElement('a');
+        // Botón Exportar HTML - SOLUCIÓN AL ERROR DE </script>
+        document.getElementById('btnExportar').addEventListener('click', function() {
+            var contenido = textarea.value;
+            // Guardar el contenido en un JSON seguro
+            var contenidoJSON = JSON.stringify(contenido);
+            
+            // Construir el HTML de exportación pieza por pieza para evitar problemas con </script>
+            var tagCierre = '<' + '/script>';
+            var tagApertura = '<' + 'script>';
+            
+            var html = '<!DOCTYPE html>\n' +
+                '<html lang="es">\n' +
+                '<head><meta charset="UTF-8"><title>Documento</title>\n' +
+                '<style>body{font-family:sans-serif;padding:20px;background:#f4f7fc}.node{border-left:5px solid #3498db;padding:8px;margin-bottom:5px;cursor:pointer;background:#fff;border-radius:6px}.children{margin-left:20px;border-left:2px dashed #ccc;padding-left:10px;margin-top:5px}.collapsed{display:none}.icon{margin-left:5px;opacity:0.6}</style>\n' +
+                '</head>\n' +
+                '<body><div id="mapa"></div>\n' +
+                tagApertura + '\n' +
+                'var contenido = ' + contenidoJSON + ';\n' +
+                'function parsear(t){var l=t.split("\\n");var p=[];var id=1;var n=[];for(var i=0;i<l.length;i++){var linea=l[i].trim();if(!linea)continue;var v=-1;var e=linea;if(linea.indexOf("# ")===0){v=0;e=linea.slice(2)}else if(linea.indexOf("## ")===0){v=1;e=linea.slice(3)}else if(linea.indexOf("### ")===0){v=2;e=linea.slice(4)}else if(linea.indexOf("- ")===0){v=p.length?p[p.length-1].v+1:1;e=linea.slice(2)}else{v=p.length?p[p.length-1].v+1:1;e=linea}while(p.length&&p[p.length-1].v>=v)p.pop();var pId=p.length?p[p.length-1].id:null;n.push({id:id,v:v,e:e,pId:pId});p.push({id:id,v:v});id++}var h=new Map();n.forEach(function(x){h.set(x.id,[])});n.forEach(function(x){if(x.pId)h.get(x.pId).push(x.id)});return{n:n,h:h,r:n.filter(function(x){return x.pId===null})}}\n' +
+                'var d=parsear(contenido);\n' +
+                'function construir(id){var x=d.n.find(function(y){return y.id===id});if(!x)return null;var c=document.createElement("div");c.className="node";c.textContent=x.e;var h=d.h.get(id)||[];if(h.length){var icon=document.createElement("span");icon.className="icon";icon.textContent="\\u25B6";c.appendChild(icon);var cc=document.createElement("div");cc.className="children collapsed";h.forEach(function(y){var z=construir(y);if(z)cc.appendChild(z)});c.appendChild(cc);c.onclick=function(){cc.classList.toggle("collapsed");icon.textContent=cc.classList.contains("collapsed")?"\\u25B6":"\\u25BC"}}return c}\n' +
+                'var m=document.getElementById("mapa");d.r.forEach(function(r){m.appendChild(construir(r.id))});\n' +
+                tagCierre + '\n' +
+                '</body></html>';
+            
+            var blob = new Blob([html], { type: 'text/html' });
+            var a = document.createElement('a');
             a.href = URL.createObjectURL(blob);
             a.download = 'documento.html';
             a.click();
