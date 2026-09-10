@@ -6,42 +6,39 @@
     <title>Nexus Acelerador</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        body { font-family: 'Segoe UI', sans-serif; background: #f4f7fc; color: #333; padding: 20px; }
+        body { font-family: 'Segoe UI', sans-serif; background: #f4f7fc; color: #333; padding: 20px; margin: 0; }
         .container { max-width: 1200px; margin: auto; }
-        .header { background: linear-gradient(135deg, #1a2a4a, #2c3e6b); color: white; padding: 15px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-        .btn { border: none; border-radius: 20px; padding: 8px 15px; cursor: pointer; font-weight: 500; }
+        .header { background: linear-gradient(135deg, #1a2a4a, #2c3e6b); color: white; padding: 15px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px; }
+        .btn { border: none; border-radius: 20px; padding: 8px 15px; cursor: pointer; font-weight: 500; font-size: 14px; }
         .btn-light { background: #f8f9fa; color: #333; }
         .btn-outline-light { background: transparent; border: 1px solid white; color: white; }
         .btn-outline-light:hover { background: rgba(255,255,255,0.2); }
         .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-        .panel { background: white; border-radius: 12px; padding: 15px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
-        textarea { width: 100%; height: 70vh; border: none; outline: none; font-family: monospace; font-size: 14px; resize: none; color: #212529; background: #fff; }
-        .node { border-left: 5px solid #3498db; padding: 8px; margin-bottom: 5px; cursor: pointer; background: #fafafa; border-radius: 6px; }
-        .node:hover { background: #f0f0f0; }
-        .children { margin-left: 20px; border-left: 2px dashed #ddd; padding-left: 10px; margin-top: 5px; }
+        @media (max-width: 768px) { .grid { grid-template-columns: 1fr; } }
+        .panel { background: white; border-radius: 12px; padding: 15px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); height: 70vh; overflow-y: auto; }
+        textarea { width: 100%; height: 100%; border: none; outline: none; font-family: 'Consolas', monospace; font-size: 14px; resize: none; color: #212529; background: #fff; }
+        .node { border-left: 5px solid #3498db; padding: 8px 12px; margin-bottom: 6px; cursor: pointer; background: #fafafa; border-radius: 6px; font-size: 14px; }
+        .node:hover { background: #eef2f7; }
+        .children { margin-left: 20px; border-left: 2px dashed #ddd; padding-left: 10px; margin-top: 6px; }
         .collapsed { display: none; }
-        .icon { font-size: 0.8rem; opacity: 0.6; margin-left: 5px; }
+        .icon { font-size: 0.8rem; opacity: 0.6; margin-left: 8px; }
+        .empty-msg { color: #999; text-align: center; padding: 40px 20px; font-style: italic; }
     </style>
 </head>
 <body>
     <div class="container">
-        <!-- Header -->
         <div class="header">
             <h2 style="margin:0;">Nexus Acelerador</h2>
             <div>
                 <button class="btn btn-outline-light" id="btnSumula">SÚMULA</button>
                 <button class="btn btn-outline-light" id="btnCorolario">Corolario</button>
-                <button class="btn btn-outline-light" id="btnExportar">Exportar HTML</button>
                 <button class="btn btn-light" id="btnTheme">🌙</button>
             </div>
         </div>
-        <!-- Grid -->
         <div class="grid">
-            <!-- Editor -->
             <div class="panel">
                 <textarea id="contenido" spellcheck="false"></textarea>
             </div>
-            <!-- Mapa -->
             <div class="panel">
                 <div id="mapa"></div>
             </div>
@@ -50,32 +47,33 @@
 
     <script>
     (function() {
-        // Elementos
         var textarea = document.getElementById('contenido');
         var mapaDiv = document.getElementById('mapa');
 
-        // Contenido por defecto
         var ejemplo = "# Acelerador de Conocimiento\n## ¿Qué es?\n- Herramienta para estructurar ideas jerárquicamente.\n## ¿Para qué sirve?\n- Planificar cursos, proyectos.\n## Características\n### Edición en tiempo real\n### Interactividad";
 
-        // Cargar contenido
         textarea.value = localStorage.getItem('nexus_contenido') || ejemplo;
 
-        // Función de parseo
         function parsear(texto) {
             var lineas = texto.split('\n');
             var nodos = [];
             var pila = [];
             var id = 1;
+            var tieneMarkdown = false;
 
-            // Si no hay marcadores markdown, tratar todo como un solo nodo
-            var tieneMarkdown = /^(#{1,6}\s|[-*]\s)/m.test(texto);
-            
+            for (var k = 0; k < lineas.length; k++) {
+                var l = lineas[k].trim();
+                if (l.indexOf('# ') === 0 || l.indexOf('## ') === 0 || l.indexOf('### ') === 0 || l.indexOf('- ') === 0 || l.indexOf('* ') === 0) {
+                    tieneMarkdown = true;
+                    break;
+                }
+            }
+
             if (!tieneMarkdown) {
-                // Mostrar el texto completo como un solo nodo raíz
-                nodos.push({ id: 1, etiqueta: texto.trim().substring(0, 100) + (texto.length > 100 ? '...' : ''), nivel: 0, padreId: null });
-                var hijosMap = new Map();
-                hijosMap.set(1, []);
-                return { nodos: nodos, hijosMap: hijosMap, raices: [nodos[0]] };
+                nodos.push({ id: 1, etiqueta: texto.trim(), nivel: 0, padreId: null });
+                var hMap = new Map();
+                hMap.set(1, []);
+                return { nodos: nodos, hijosMap: hMap, raices: [nodos[0]] };
             }
 
             for (var i = 0; i < lineas.length; i++) {
@@ -86,11 +84,16 @@
                 if (linea.indexOf('# ') === 0) { nivel = 0; etiqueta = linea.slice(2); }
                 else if (linea.indexOf('## ') === 0) { nivel = 1; etiqueta = linea.slice(3); }
                 else if (linea.indexOf('### ') === 0) { nivel = 2; etiqueta = linea.slice(4); }
-                else if (linea.indexOf('- ') === 0 || linea.indexOf('* ') === 0) { nivel = pila.length ? pila[pila.length-1].nivel + 1 : 1; etiqueta = linea.slice(2); }
-                else { nivel = pila.length ? pila[pila.length-1].nivel + 1 : 1; etiqueta = linea; }
-
-                while (pila.length && pila[pila.length-1].nivel >= nivel) pila.pop();
-                var padreId = pila.length ? pila[pila.length-1].id : null;
+                else if (linea.indexOf('#### ') === 0) { nivel = 3; etiqueta = linea.slice(5); }
+                else if (linea.indexOf('- ') === 0 || linea.indexOf('* ') === 0) {
+                    nivel = pila.length ? pila[pila.length - 1].nivel + 1 : 1;
+                    etiqueta = linea.slice(2);
+                } else {
+                    nivel = pila.length ? pila[pila.length - 1].nivel + 1 : 1;
+                    etiqueta = linea;
+                }
+                while (pila.length && pila[pila.length - 1].nivel >= nivel) pila.pop();
+                var padreId = pila.length ? pila[pila.length - 1].id : null;
                 nodos.push({ id: id, etiqueta: etiqueta, nivel: nivel, padreId: padreId });
                 pila.push({ id: id, nivel: nivel });
                 id++;
@@ -98,20 +101,21 @@
 
             var hijosMap = new Map();
             nodos.forEach(function(n) { hijosMap.set(n.id, []); });
-            nodos.forEach(function(n) { if (n.padreId) hijosMap.get(n.padreId).push(n.id); });
-            
+            nodos.forEach(function(n) { if (n.padreId !== null) hijosMap.get(n.padreId).push(n.id); });
+
             return { nodos: nodos, hijosMap: hijosMap, raices: nodos.filter(function(n) { return n.padreId === null; }) };
         }
 
-        // Función de renderizado
         function generarMapa() {
             var resultado = parsear(textarea.value);
-            var nodos = resultado.nodos;
+            var nodosMap = new Map(resultado.nodos.map(function(n) { return [n.id, n]; }));
             var hijosMap = resultado.hijosMap;
-            var raices = resultado.raices;
-            var nodosMap = new Map(nodos.map(function(n) { return [n.id, n]; }));
-            
             mapaDiv.innerHTML = '';
+
+            if (!resultado.raices.length) {
+                mapaDiv.innerHTML = '<div class="empty-msg">Escribe algún texto para ver el mapa</div>';
+                return;
+            }
 
             function construir(id) {
                 var nodo = nodosMap.get(id);
@@ -119,13 +123,17 @@
                 var hijos = hijosMap.get(id) || [];
                 var card = document.createElement('div');
                 card.className = 'node';
-                card.textContent = nodo.etiqueta;
+
+                var textSpan = document.createElement('span');
+                textSpan.textContent = nodo.etiqueta;
+                card.appendChild(textSpan);
 
                 if (hijos.length) {
                     var icon = document.createElement('span');
                     icon.className = 'icon';
                     icon.textContent = '▶';
                     card.appendChild(icon);
+
                     var cont = document.createElement('div');
                     cont.className = 'children collapsed';
                     hijos.forEach(function(h) {
@@ -133,6 +141,7 @@
                         if (c) cont.appendChild(c);
                     });
                     card.appendChild(cont);
+
                     card.onclick = function(e) {
                         e.stopPropagation();
                         cont.classList.toggle('collapsed');
@@ -142,22 +151,19 @@
                 return card;
             }
 
-            raices.forEach(function(r) {
+            resultado.raices.forEach(function(r) {
                 var c = construir(r.id);
                 if (c) mapaDiv.appendChild(c);
             });
         }
 
-        // Guardar y regenerar mapa
         textarea.addEventListener('input', function() {
             localStorage.setItem('nexus_contenido', textarea.value);
             generarMapa();
         });
 
-        // Inicializar
         generarMapa();
 
-        // Botón SÚMULA
         document.getElementById('btnSumula').addEventListener('click', function() {
             var texto = prompt("Pega tu texto aquí:");
             if (texto) {
@@ -167,7 +173,6 @@
             }
         });
 
-        // Botón Corolario
         document.getElementById('btnCorolario').addEventListener('click', function() {
             var corolario = "# Corolario Pedagógico\n## ¿Qué es?\n- Síntesis didáctica.\n## ¿Para qué sirve?\n- Guía práctica.\n## Características\n### La Fundación\n#### Detalles\n- Sin un Maestro Perfecto es imposible recibir el Naam.";
             textarea.value = corolario;
@@ -175,47 +180,14 @@
             generarMapa();
         });
 
-        // Botón tema oscuro
         document.getElementById('btnTheme').addEventListener('click', function() {
             document.body.classList.toggle('dark-theme');
-            if (!document.querySelector('style#darkStyle')) {
+            if (!document.getElementById('darkStyle')) {
                 var style = document.createElement('style');
                 style.id = 'darkStyle';
-                style.textContent = 'body.dark-theme { background: #1e1e2e; color: #e0e0e0; } body.dark-theme .panel { background: #2a2a3c; color: #e0e0e0; } body.dark-theme textarea { background: #2a2a3c; color: #e0e0e0; } body.dark-theme .node { background: #333; color: #fff; }';
+                style.textContent = 'body.dark-theme{background:#1e1e2e;color:#e0e0e0}body.dark-theme .panel{background:#2a2a3c;color:#e0e0e0}body.dark-theme textarea{background:#2a2a3c;color:#e0e0e0}body.dark-theme .node{background:#333;color:#fff}body.dark-theme .node:hover{background:#444}';
                 document.head.appendChild(style);
             }
-        });
-
-        // Botón Exportar HTML - SOLUCIÓN AL ERROR DE </script>
-        document.getElementById('btnExportar').addEventListener('click', function() {
-            var contenido = textarea.value;
-            // Guardar el contenido en un JSON seguro
-            var contenidoJSON = JSON.stringify(contenido);
-            
-            // Construir el HTML de exportación pieza por pieza para evitar problemas con </script>
-            var tagCierre = '<' + '/script>';
-            var tagApertura = '<' + 'script>';
-            
-            var html = '<!DOCTYPE html>\n' +
-                '<html lang="es">\n' +
-                '<head><meta charset="UTF-8"><title>Documento</title>\n' +
-                '<style>body{font-family:sans-serif;padding:20px;background:#f4f7fc}.node{border-left:5px solid #3498db;padding:8px;margin-bottom:5px;cursor:pointer;background:#fff;border-radius:6px}.children{margin-left:20px;border-left:2px dashed #ccc;padding-left:10px;margin-top:5px}.collapsed{display:none}.icon{margin-left:5px;opacity:0.6}</style>\n' +
-                '</head>\n' +
-                '<body><div id="mapa"></div>\n' +
-                tagApertura + '\n' +
-                'var contenido = ' + contenidoJSON + ';\n' +
-                'function parsear(t){var l=t.split("\\n");var p=[];var id=1;var n=[];for(var i=0;i<l.length;i++){var linea=l[i].trim();if(!linea)continue;var v=-1;var e=linea;if(linea.indexOf("# ")===0){v=0;e=linea.slice(2)}else if(linea.indexOf("## ")===0){v=1;e=linea.slice(3)}else if(linea.indexOf("### ")===0){v=2;e=linea.slice(4)}else if(linea.indexOf("- ")===0){v=p.length?p[p.length-1].v+1:1;e=linea.slice(2)}else{v=p.length?p[p.length-1].v+1:1;e=linea}while(p.length&&p[p.length-1].v>=v)p.pop();var pId=p.length?p[p.length-1].id:null;n.push({id:id,v:v,e:e,pId:pId});p.push({id:id,v:v});id++}var h=new Map();n.forEach(function(x){h.set(x.id,[])});n.forEach(function(x){if(x.pId)h.get(x.pId).push(x.id)});return{n:n,h:h,r:n.filter(function(x){return x.pId===null})}}\n' +
-                'var d=parsear(contenido);\n' +
-                'function construir(id){var x=d.n.find(function(y){return y.id===id});if(!x)return null;var c=document.createElement("div");c.className="node";c.textContent=x.e;var h=d.h.get(id)||[];if(h.length){var icon=document.createElement("span");icon.className="icon";icon.textContent="\\u25B6";c.appendChild(icon);var cc=document.createElement("div");cc.className="children collapsed";h.forEach(function(y){var z=construir(y);if(z)cc.appendChild(z)});c.appendChild(cc);c.onclick=function(){cc.classList.toggle("collapsed");icon.textContent=cc.classList.contains("collapsed")?"\\u25B6":"\\u25BC"}}return c}\n' +
-                'var m=document.getElementById("mapa");d.r.forEach(function(r){m.appendChild(construir(r.id))});\n' +
-                tagCierre + '\n' +
-                '</body></html>';
-            
-            var blob = new Blob([html], { type: 'text/html' });
-            var a = document.createElement('a');
-            a.href = URL.createObjectURL(blob);
-            a.download = 'documento.html';
-            a.click();
         });
 
     })();
