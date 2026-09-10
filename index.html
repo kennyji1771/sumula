@@ -23,7 +23,6 @@
         .collapsed { display: none; }
         .icon { font-size: 0.8rem; opacity: 0.6; margin-left: 8px; }
         .empty-msg { color: #999; text-align: center; padding: 40px 20px; font-style: italic; }
-        /* Panel de voz */
         .voice-panel { background: #f8f9fc; border-radius: 10px; padding: 10px 12px; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; border: 1px solid #e0e6ed; }
         .voice-panel button { border: none; border-radius: 8px; padding: 6px 12px; cursor: pointer; font-size: 16px; font-weight: bold; }
         .btn-play { background: #2ecc71; color: white; }
@@ -79,11 +78,12 @@
 
         var synth = window.speechSynthesis;
         var utterance = null;
-        var listaNodos = [];      // Lista de textos que se van a leer
-        var indiceActual = 0;      // Nodo que está sonando
+        var listaNodos = [];
+        var indiceActual = 0;
         var estaPausado = false;
+        // ✅ BANDERA CRÍTICA: controla si se debe continuar leyendo
+        var canceladoManualmente = false;
 
-        // Contenido por defecto
         var ejemplo = "# Acelerador de Conocimiento\n## ¿Qué es?\n- Herramienta para estructurar ideas jerárquicamente.\n## ¿Para qué sirve?\n- Planificar cursos, proyectos.\n## Características\n### Edición en tiempo real\n### Interactividad";
 
         textarea.value = localStorage.getItem('nexus_contenido') || ejemplo;
@@ -178,7 +178,6 @@
                     });
                     card.appendChild(cont);
 
-                    // IMPORTANTE: Clic solo expande/colapsa, NO inicia lectura
                     card.onclick = function(e) {
                         e.stopPropagation();
                         cont.classList.toggle('collapsed');
@@ -195,22 +194,21 @@
         }
 
         // ========== MÓDULO 1: LIMPIEZA DE TEXTO ==========
-        // Elimina todos los símbolos de markdown para que no se lean
         function limpiarTexto(t) {
             return t
-                .replace(/^#{1,6}\s*/gm, '')      // Elimina #, ##, ###...
-                .replace(/^[-*+]\s*/gm, '')       // Elimina - , * , +
-                .replace(/^>\s?/gm, '')            // Elimina >
-                .replace(/\*\*/g, '')              // Elimina **
-                .replace(/__/g, '')                // Elimina __
-                .replace(/\*/g, '')                // Elimina *
-                .replace(/_/g, '')                 // Elimina _
-                .replace(/~~/g, '')                // Elimina ~~
-                .replace(/`/g, '')                 // Elimina `
-                .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')  // [texto](url) -> texto
-                .replace(/!\[([^\]]*)\]\([^)]*\)/g, '$1') // ![alt](url) -> alt
-                .replace(/\n+/g, '. ')             // Saltos de línea -> punto
-                .replace(/\s{2,}/g, ' ')           // Espacios múltiples -> uno
+                .replace(/^#{1,6}\s*/gm, '')
+                .replace(/^[-*+]\s*/gm, '')
+                .replace(/^>\s?/gm, '')
+                .replace(/\*\*/g, '')
+                .replace(/__/g, '')
+                .replace(/\*/g, '')
+                .replace(/_/g, '')
+                .replace(/~~/g, '')
+                .replace(/`/g, '')
+                .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')
+                .replace(/!\[([^\]]*)\]\([^)]*\)/g, '$1')
+                .replace(/\n+/g, '. ')
+                .replace(/\s{2,}/g, ' ')
                 .trim();
         }
 
@@ -218,7 +216,7 @@
         function poblarVoces() {
             var voces = synth.getVoices();
             var vocesEspanol = voces.filter(function(v) { return v.lang.indexOf('es') === 0; });
-            
+
             voiceSelect.innerHTML = '';
             if (vocesEspanol.length === 0) {
                 var opt = document.createElement('option');
@@ -226,7 +224,7 @@
                 voiceSelect.appendChild(opt);
                 return;
             }
-            
+
             vocesEspanol.forEach(function(v, i) {
                 var opt = document.createElement('option');
                 opt.value = i;
@@ -241,12 +239,11 @@
         poblarVoces();
         setTimeout(poblarVoces, 500);
 
-        // ========== MÓDULO 1: PREPARAR LISTA DE LECTURA ==========
+        // ========== MÓDULO 1: PREPARAR LISTA ==========
         function prepararLista() {
             var resultado = parsear(textarea.value);
             var lista = [];
 
-            // Recorrer todos los nodos desde las raíces
             function recorrer(id) {
                 var nodo = null;
                 for (var i = 0; i < resultado.nodos.length; i++) {
@@ -264,6 +261,9 @@
 
         // ========== MÓDULO 1: LEER SIGUIENTE ==========
         function leerSiguiente() {
+            // ✅ CRÍTICO: Si se canceló manualmente, NO continuar
+            if (canceladoManualmente) return;
+
             if (indiceActual >= listaNodos.length) {
                 detenerLectura();
                 voiceStatus.textContent = 'Lectura finalizada';
@@ -293,11 +293,14 @@
             utterance.lang = 'es-ES';
 
             utterance.onend = function() {
+                // ✅ CRÍTICO: No continuar si fue cancelado
+                if (canceladoManualmente) return;
                 indiceActual++;
                 leerSiguiente();
             };
 
             utterance.onerror = function(e) {
+                if (canceladoManualmente) return;
                 console.warn('Error de voz:', e);
                 indiceActual++;
                 leerSiguiente();
@@ -307,8 +310,10 @@
             voiceStatus.textContent = '🔊 Leyendo (' + (indiceActual + 1) + '/' + listaNodos.length + ')';
         }
 
-        // ========== MÓDULO 1: DETENER ==========
+        // ========== MÓDULO 1: DETENER (con bandera) ==========
         function detenerLectura() {
+            // ✅ Activar bandera ANTES de cancelar para que onend no reinicie
+            canceladoManualmente = true;
             synth.cancel();
             utterance = null;
             indiceActual = 0;
@@ -316,6 +321,8 @@
             btnPlay.textContent = '▶';
             btnPause.style.display = 'none';
             voiceStatus.textContent = 'Detenido';
+            // Resetear la bandera después de un instante (para permitir futuras lecturas)
+            setTimeout(function() { canceladoManualmente = false; }, 150);
         }
 
         // ========== MÓDULO 1: PLAY ==========
@@ -328,14 +335,16 @@
                 btnPause.style.display = 'inline-block';
                 voiceStatus.textContent = '⏸ Pausado';
             } else if (synth.paused) {
-                // Está pausado: reanudar
+                // Reanudar (con cancelación previa del delay)
+                canceladoManualmente = false;
                 synth.resume();
                 estaPausado = false;
                 btnPlay.textContent = '⏸';
                 btnPause.style.display = 'none';
                 voiceStatus.textContent = '🔊 Reanudando...';
             } else {
-                // Detenido: iniciar desde cero
+                // Iniciar desde cero
+                canceladoManualmente = false;
                 listaNodos = prepararLista();
                 if (listaNodos.length === 0) {
                     voiceStatus.textContent = 'No hay contenido para leer';
@@ -364,8 +373,11 @@
 
         // ========== EVENTOS DEL NÚCLEO ==========
         textarea.addEventListener('input', function() {
+            // ✅ Detener lectura al editar (con bandera para no reiniciar)
+            if (synth.speaking || synth.paused) {
+                detenerLectura();
+            }
             localStorage.setItem('nexus_contenido', textarea.value);
-            detenerLectura();
             generarMapa();
         });
 
@@ -374,18 +386,18 @@
         document.getElementById('btnSumula').addEventListener('click', function() {
             var texto = prompt("Pega tu texto aquí:");
             if (texto) {
+                detenerLectura();
                 textarea.value = texto;
                 localStorage.setItem('nexus_contenido', texto);
-                detenerLectura();
                 generarMapa();
             }
         });
 
         document.getElementById('btnCorolario').addEventListener('click', function() {
+            detenerLectura();
             var corolario = "# Corolario Pedagógico\n## ¿Qué es?\n- Síntesis didáctica.\n## ¿Para qué sirve?\n- Guía práctica.\n## Características\n### La Fundación\n#### Detalles\n- Sin un Maestro Perfecto es imposible recibir el Naam.";
             textarea.value = corolario;
             localStorage.setItem('nexus_contenido', corolario);
-            detenerLectura();
             generarMapa();
         });
 
