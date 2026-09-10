@@ -34,6 +34,8 @@ textarea{width:100%;height:100%;border:none;outline:none;font-family:'Consolas',
 .btn-loop{background:#9b59b6;color:white}.btn-loop:hover{background:#8e44ad}
 .btn-loop.active{background:#8e44ad;box-shadow:inset 0 0 0 3px #fff}
 .btn-clear{background:#95a5a6;color:white;font-size:12px;padding:6px 10px}.btn-clear:hover{background:#7f8c8d}
+.btn-karaoke{background:#3498db;color:white}.btn-karaoke:hover{background:#2980b9}
+.btn-karaoke.active{background:#2980b9;box-shadow:inset 0 0 0 3px #fff}
 .voice-panel select{padding:5px 10px;border-radius:8px;border:1px solid #ccc;font-size:13px;color:#333;background:white;max-width:180px}
 .timer-display{font-family:'Consolas',monospace;font-weight:bold;font-size:16px;color:#2c3e6b;background:white;padding:4px 10px;border-radius:8px;border:1px solid #e0e6ed;min-width:60px;text-align:center}
 .timer-estimado{font-size:11px;color:#888}
@@ -45,6 +47,20 @@ textarea{width:100%;height:100%;border:none;outline:none;font-family:'Consolas',
 .dropdown-item{display:block;padding:8px 16px;color:#333;text-decoration:none;cursor:pointer;font-size:14px;white-space:nowrap}
 .dropdown-item:hover{background:#f0f5fa}
 .dropdown-item i{margin-right:8px;color:#666}
+/* KARAOKE MODAL */
+#karaokeModal{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:#ffffff;z-index:5000;flex-direction:column}
+#karaokeModal.show{display:flex}
+#karaokeHeader{background:linear-gradient(135deg,#1a2a4a,#2c3e6b);color:white;padding:12px 20px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px}
+#karaokeHeader h3{margin:0;font-size:1.2rem}
+#karaokeHeader .karaoke-controls{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+#karaokeHeader button{border:none;border-radius:8px;padding:6px 12px;cursor:pointer;font-size:14px;font-weight:bold}
+#karaokeBody{flex:1;overflow-y:auto;padding:40px 60px;font-size:1.8rem;line-height:2.2;color:#212529;background:#fafbfc}
+#karaokeBody .karaoke-word{padding:2px 4px;border-radius:4px;transition:background-color 0.15s,color 0.15s}
+#karaokeBody .karaoke-word.highlight-word{background:#ffeb3b;color:#000;font-weight:bold;box-shadow:0 0 8px rgba(255,235,59,0.7)}
+#karaokeBody .karaoke-node-title{font-size:1.2rem;color:#3498db;font-weight:600;margin-bottom:15px;padding-bottom:8px;border-bottom:2px solid #e0e6ed}
+body.dark #karaokeBody{background:#1e1e2e;color:#e0e0e0}
+body.dark #karaokeBody .karaoke-node-title{color:#6ab0ff;border-bottom-color:#3a3a4c}
+body.dark #karaokeBody .karaoke-word.highlight-word{background:#b8860b;color:#fff;box-shadow:0 0 8px rgba(184,134,11,0.7)}
 </style>
 </head>
 <body>
@@ -72,7 +88,7 @@ textarea{width:100%;height:100%;border:none;outline:none;font-family:'Consolas',
 <button class="btn-pause" id="btnPause" style="display:none">⏸</button>
 <button class="btn-stop" id="btnStop">⏹</button>
 <button class="btn-loop" id="btnLoop" title="Repetir en bucle">🔂</button>
-<!-- MÓDULO 5 · CRIBA -->
+<button class="btn-karaoke" id="btnKaraoke" title="Modo lectura asistida">📖</button>
 <button class="btn-clear" id="btnClear" title="Limpiar selección">✕ Limpiar</button>
 <select id="voiceSelect"></select>
 <span class="timer-display" id="timerDisplay">00:00</span>
@@ -83,6 +99,20 @@ textarea{width:100%;height:100%;border:none;outline:none;font-family:'Consolas',
 <div id="mapa"></div>
 </div>
 </div>
+</div>
+
+<!-- MÓDULO 6 · KARAOKE -->
+<div id="karaokeModal">
+<div id="karaokeHeader">
+<h3 id="karaokeTitle">📖 Lectura Asistida</h3>
+<div class="karaoke-controls">
+<button class="btn-play" id="kPlay">▶</button>
+<button class="btn-pause" id="kPause" style="display:none">⏸</button>
+<button class="btn-stop" id="kStop">⏹</button>
+<button class="btn-light" id="kClose" style="background:#e74c3c;color:white">✕ Cerrar</button>
+</div>
+</div>
+<div id="karaokeBody"></div>
 </div>
 
 <script>
@@ -104,6 +134,15 @@ var btnLoop=document.getElementById('btnLoop');
 // CRIBA
 var btnClear=document.getElementById('btnClear');
 var selectionInfo=document.getElementById('selectionInfo');
+// KARAOKE
+var btnKaraoke=document.getElementById('btnKaraoke');
+var karaokeModal=document.getElementById('karaokeModal');
+var karaokeBody=document.getElementById('karaokeBody');
+var karaokeTitle=document.getElementById('karaokeTitle');
+var kPlay=document.getElementById('kPlay');
+var kPause=document.getElementById('kPause');
+var kStop=document.getElementById('kStop');
+var kClose=document.getElementById('kClose');
 
 var synth=window.speechSynthesis;
 var utterance=null;
@@ -117,8 +156,12 @@ var bucleActivo=false;
 var estadoReproductor='detenido';
 var vocesCargadas=[];
 var generacion=0;
-// ✅ MÓDULO 5: Conjunto de nodos seleccionados (por su etiqueta de texto)
 var seleccionados=new Set();
+// ✅ MÓDULO 6: Estado del karaoke
+var karaokeActivo=false;
+var karaokeWords=[];
+var karaokePositions=[];
+var karaokeCurrentIdx=-1;
 
 var ejemplo="# Acelerador de Conocimiento\n## ¿Qué es?\n- Herramienta para estructurar ideas jerárquicamente.\n## ¿Para qué sirve?\n- Planificar cursos, proyectos.\n## Características\n### Edición en tiempo real\n### Interactividad";
 textarea.value=localStorage.getItem('nexus_contenido')||ejemplo;
@@ -143,7 +186,6 @@ nodos.forEach(function(n){if(n.padreId!==null)hijosMap.get(n.padreId).push(n.id)
 return{nodos:nodos,hijosMap:hijosMap,raices:nodos.filter(function(n){return n.padreId===null;})};
 }
 
-// ✅ MÓDULO 5: Obtener texto de un nodo Y sus descendientes (para selección)
 function obtenerTextoNodoYHijos(id,resultado){
 var partes=[];
 function rec(id){
@@ -158,10 +200,7 @@ rec(id);
 return partes;
 }
 
-// ✅ MÓDULO 5: Verificar si un nodo está seleccionado por etiqueta
-function estaSeleccionado(etiqueta){
-return seleccionados.has(etiqueta);
-}
+function estaSeleccionado(etiqueta){return seleccionados.has(etiqueta);}
 
 // RENDERIZADOR
 function generarMapa(){
@@ -174,30 +213,14 @@ function construir(id){
 var nodo=nodosMap.get(id);if(!nodo)return null;
 var hijos=hijosMap.get(id)||[];
 var card=document.createElement('div');card.className='node';
-
-// ✅ MÓDULO 5: Checkbox de selección
 var chk=document.createElement('input');
 chk.type='checkbox';
 chk.checked=estaSeleccionado(nodo.etiqueta);
 chk.title='Seleccionar para reproducir solo este segmento';
 chk.onclick=function(e){e.stopPropagation();};
-chk.onchange=function(e){
-e.stopPropagation();
-if(chk.checked){
-seleccionados.add(nodo.etiqueta);
-}else{
-seleccionados.delete(nodo.etiqueta);
-}
-actualizarInfoSeleccion();
-calcularEstimacion();
-};
+chk.onchange=function(e){e.stopPropagation();if(chk.checked)seleccionados.add(nodo.etiqueta);else seleccionados.delete(nodo.etiqueta);actualizarInfoSeleccion();calcularEstimacion();};
 card.appendChild(chk);
-
-var textSpan=document.createElement('span');
-textSpan.className='node-text';
-textSpan.textContent=nodo.etiqueta;
-card.appendChild(textSpan);
-
+var textSpan=document.createElement('span');textSpan.className='node-text';textSpan.textContent=nodo.etiqueta;card.appendChild(textSpan);
 if(hijos.length){
 var icon=document.createElement('span');icon.className='icon';icon.textContent='▶';card.appendChild(icon);
 var cont=document.createElement('div');cont.className='children collapsed';
@@ -212,16 +235,11 @@ calcularEstimacion();
 actualizarInfoSeleccion();
 }
 
-// ✅ MÓDULO 5: Actualizar contador de selección
 function actualizarInfoSeleccion(){
-if(seleccionados.size===0){
-selectionInfo.textContent='';
-}else{
-selectionInfo.textContent='☑ '+seleccionados.size+' seleccionado'+(seleccionados.size>1?'s':'');
-}
+if(seleccionados.size===0)selectionInfo.textContent='';
+else selectionInfo.textContent='☑ '+seleccionados.size+' seleccionado'+(seleccionados.size>1?'s':'');
 }
 
-// LIMPIEZA
 function limpiarTexto(t){
 return t.replace(/^#{1,6}\s*/gm,'').replace(/^[-*+]\s*/gm,'').replace(/^>\s?/gm,'').replace(/\*\*/g,'').replace(/__/g,'').replace(/\*/g,'').replace(/_/g,'').replace(/~~/g,'').replace(/`/g,'').replace(/\[([^\]]*)\]\([^)]*\)/g,'$1').replace(/!\[([^\]]*)\]\([^)]*\)/g,'$1').replace(/\n+/g,'. ').replace(/\s{2,}/g,' ').trim();
 }
@@ -235,12 +253,8 @@ return es;
 function poblarVoces(){
 vocesCargadas=obtenerVocesEspanol();
 voiceSelect.innerHTML='';
-if(vocesCargadas.length===0){
-var opt=document.createElement('option');opt.textContent='(Cargando voces...)';voiceSelect.appendChild(opt);return;
-}
-vocesCargadas.forEach(function(v,i){
-var opt=document.createElement('option');opt.value=i;opt.textContent=v.name+' ('+v.lang+')';voiceSelect.appendChild(opt);
-});
+if(vocesCargadas.length===0){var opt=document.createElement('option');opt.textContent='(Cargando voces...)';voiceSelect.appendChild(opt);return;}
+vocesCargadas.forEach(function(v,i){var opt=document.createElement('option');opt.value=i;opt.textContent=v.name+' ('+v.lang+')';voiceSelect.appendChild(opt);});
 var pref=-1;
 for(var j=0;j<vocesCargadas.length;j++){
 var n=vocesCargadas[j].name.toLowerCase();
@@ -288,24 +302,18 @@ var min=Math.floor(segundosTotales/60);var seg=segundosTotales%60;
 timerEstimado.textContent='~'+min+'m '+(seg<10?'0':'')+seg+'s ('+palabras+' pal.)';
 }
 
-// ✅ MÓDULO 5: Preparar lista respetando selección
 function prepararLista(){
 var resultado=parsear(textarea.value);
 var lista=[];
-// Si hay selección, SOLO leer los nodos seleccionados (con sus hijos)
 if(seleccionados.size>0){
 resultado.nodos.forEach(function(nodo){
 if(seleccionados.has(nodo.etiqueta)){
-// Añadir este nodo y todos sus hijos
 var textos=obtenerTextoNodoYHijos(nodo.id,resultado);
-textos.forEach(function(t){
-if(lista.indexOf(t)===-1)lista.push(t);
-});
+textos.forEach(function(t){if(lista.indexOf(t)===-1)lista.push(t);});
 }
 });
 return lista;
 }
-// Sin selección: leer todo (comportamiento original)
 function recorrer(id){
 var nodo=null;
 for(var i=0;i<resultado.nodos.length;i++){if(resultado.nodos[i].id===id){nodo=resultado.nodos[i];break;}}
@@ -316,6 +324,62 @@ hijos.forEach(recorrer);
 }
 resultado.raices.forEach(function(r){recorrer(r.id);});
 return lista;
+}
+
+// ✅ MÓDULO 6: KARAOKE - Preparar palabras en el modal
+function prepararKaraoke(textoOriginal){
+karaokeBody.innerHTML='';
+karaokeWords=[];karaokePositions=[];karaokeCurrentIdx=-1;
+var limpio=limpiarTexto(textoOriginal);
+if(!limpio){karaokeBody.textContent='(Sin texto)';return;}
+// Título del nodo
+var title=document.createElement('div');
+title.className='karaoke-node-title';
+title.textContent='▶ '+textoOriginal;
+karaokeBody.appendChild(title);
+// Contenedor de palabras
+var container=document.createElement('div');
+var palabras=limpio.split(/\s+/);
+var pos=0;
+for(var i=0;i<palabras.length;i++){
+var w=palabras[i];
+if(!w){pos++;continue;}
+var span=document.createElement('span');
+span.textContent=w;
+span.className='karaoke-word';
+span.dataset.idx=i;
+container.appendChild(span);
+karaokePositions.push({start:pos,end:pos+w.length,idx:i});
+pos+=w.length+1;
+container.appendChild(document.createTextNode(' '));
+karaokeWords.push(span);
+}
+karaokeBody.appendChild(container);
+}
+// ✅ MÓDULO 6: Resaltar palabra actual
+function resaltarPalabra(charIndex){
+if(!karaokeActivo)return;
+if(karaokePositions.length===0)return;
+for(var i=0;i<karaokePositions.length;i++){
+var p=karaokePositions[i];
+if(charIndex>=p.start&&charIndex<p.end){
+if(karaokeCurrentIdx!==i){
+if(karaokeCurrentIdx>=0&&karaokeWords[karaokeCurrentIdx])karaokeWords[karaokeCurrentIdx].classList.remove('highlight-word');
+karaokeWords[i].classList.add('highlight-word');
+karaokeCurrentIdx=i;
+try{karaokeWords[i].scrollIntoView({block:'center',behavior:'smooth'});}catch(e){}
+}
+return;
+}
+}
+}
+function resaltarNodoCompleto(){
+// Fallback para Firefox: resalta todas las palabras
+for(var i=0;i<karaokeWords.length;i++)karaokeWords[i].classList.add('highlight-word');
+}
+function limpiarResaltado(){
+for(var i=0;i<karaokeWords.length;i++)karaokeWords[i].classList.remove('highlight-word');
+karaokeCurrentIdx=-1;
 }
 
 // ✅ LIMPIAR SYNTH
@@ -347,6 +411,20 @@ try{
 var u=new SpeechSynthesisUtterance(texto);
 if(!asignarVoz(u)){voiceStatus.textContent='⚠️ Sin voz';onDone();return;}
 u.rate=0.9;u.pitch=1;u.volume=1;
+// ✅ MÓDULO 6: onboundary para karaoke
+u.onboundary=function(ev){
+if(!karaokeActivo)return;
+if(miGeneracion!==generacion)return;
+if(ev.name==='word'||ev.name==='sentence'){
+resaltarPalabra(ev.charIndex);
+}
+};
+u.onstart=function(){
+// Fallback para Firefox (sin onboundary confiable)
+if(karaokeActivo&&navigator.userAgent.indexOf('Firefox')!==-1){
+setTimeout(function(){if(karaokeActivo&&miGeneracion===generacion)resaltarNodoCompleto();},300);
+}
+};
 u.onend=function(){
 if(miGeneracion!==generacion)return;
 if(estadoReproductor!=='leyendo')return;
@@ -397,6 +475,10 @@ if(!textoLimpio){indiceActual++;leerSiguiente();return;}
 var prefijo=bucleActivo?'🔂 ':'🔊 ';
 var selInfo=seleccionados.size>0?' [CRIBA]':'';
 voiceStatus.textContent=prefijo+'Leyendo ('+(indiceActual+1)+'/'+listaNodos.length+')'+selInfo;
+// ✅ MÓDULO 6: Si el karaoke está activo, actualizar su contenido
+if(karaokeActivo){
+prepararKaraoke(texto);
+}
 hablar(textoLimpio,function(){
 indiceActual++;
 leerSiguiente();
@@ -449,7 +531,6 @@ btnPause.style.display='none';
 setTimeout(function(){leerSiguiente();},250);
 });
 
-// PAUSA EXPLÍCITA
 btnPause.addEventListener('click',function(){
 if(estadoReproductor==='leyendo'){
 estadoReproductor='pausado';
@@ -461,26 +542,65 @@ pausarCronometro();
 }
 });
 
-// STOP
 btnStop.addEventListener('click',function(){
 detenerLectura();
 voiceStatus.textContent='⏹ Detenido';
 });
 
-// ELEGÍA
 btnLoop.addEventListener('click',function(){
 bucleActivo=!bucleActivo;
 btnLoop.classList.toggle('active',bucleActivo);
 voiceStatus.textContent=bucleActivo?'🔂 Bucle ACTIVADO':'🔂 Bucle desactivado';
 });
 
-// ✅ MÓDULO 5: Botón Limpiar selección
 btnClear.addEventListener('click',function(){
 seleccionados.clear();
 actualizarInfoSeleccion();
 generarMapa();
 voiceStatus.textContent='✕ Selección limpiada';
 });
+
+// ✅ MÓDULO 6: KARAOKE - Abrir/cerrar modal
+btnKaraoke.addEventListener('click',function(){
+karaokeActivo=!karaokeActivo;
+btnKaraoke.classList.toggle('active',karaokeActivo);
+if(karaokeActivo){
+karaokeModal.classList.add('show');
+voiceStatus.textContent='📖 Karaoke ACTIVADO';
+// Si hay texto actual, mostrarlo; si no, mostrar el primero
+if(listaNodos.length>0&&indiceActual<listaNodos.length){
+prepararKaraoke(listaNodos[indiceActual]);
+}else{
+var lista=prepararLista();
+if(lista.length>0)prepararKaraoke(lista[0]);
+else karaokeBody.innerHTML='<div style="text-align:center;color:#999;padding:40px">Sin contenido. Inicia la reproducción.</div>';
+}
+}else{
+karaokeModal.classList.remove('show');
+voiceStatus.textContent='📖 Karaoke desactivado';
+}
+});
+
+kClose.addEventListener('click',function(){
+karaokeActivo=false;
+btnKaraoke.classList.remove('active');
+karaokeModal.classList.remove('show');
+voiceStatus.textContent='📖 Karaoke cerrado';
+});
+
+// Controles del modal karaoke (delegan a los principales)
+kPlay.addEventListener('click',function(){btnPlay.click();syncKaraokeButtons();});
+kPause.addEventListener('click',function(){btnPause.click();syncKaraokeButtons();});
+kStop.addEventListener('click',function(){btnStop.click();syncKaraokeButtons();});
+function syncKaraokeButtons(){
+if(estadoReproductor==='leyendo'){
+kPlay.textContent='⏸';kPause.style.display='none';
+}else if(estadoReproductor==='pausado'){
+kPlay.textContent='▶';kPause.style.display='none';
+}else{
+kPlay.textContent='▶';kPause.style.display='none';
+}
+}
 
 // EVENTOS
 textarea.addEventListener('input',function(){
@@ -501,6 +621,7 @@ textarea.value=corolario;localStorage.setItem('nexus_contenido',corolario);selec
 });
 document.getElementById('btnTheme').addEventListener('click',function(){
 document.body.classList.toggle('dark-theme');
+document.body.classList.toggle('dark');
 if(!document.getElementById('darkStyle')){
 var style=document.createElement('style');style.id='darkStyle';
 style.textContent='body.dark-theme{background:#1e1e2e;color:#e0e0e0}body.dark-theme .panel{background:#2a2a3c;color:#e0e0e0}body.dark-theme textarea{background:#2a2a3c;color:#e0e0e0}body.dark-theme .node{background:#333;color:#fff}body.dark-theme .node:hover{background:#444}body.dark-theme .voice-panel{background:#2a2a3c;border-color:#3a3a4c}body.dark-theme .voice-panel select{background:#333;color:#fff;border-color:#555}body.dark-theme .voice-status{color:#aaa}body.dark-theme .timer-display{background:#333;color:#fff;border-color:#555}body.dark-theme .timer-estimado{color:#aaa}body.dark-theme .dropdown-menu{background:#2a2a3c;border-color:#3a3a4c}body.dark-theme .dropdown-item{color:#e0e0e0}body.dark-theme .dropdown-item:hover{background:#35355a}body.dark-theme .selection-info{color:#6ab0ff}';
@@ -532,6 +653,7 @@ html+='.btn-pause{background:#f39c12;color:white}.btn-pause:hover{background:#e6
 html+='.btn-stop{background:#e74c3c;color:white}.btn-stop:hover{background:#c0392b}';
 html+='.btn-loop{background:#9b59b6;color:white}.btn-loop:hover{background:#8e44ad}.btn-loop.active{background:#8e44ad;box-shadow:inset 0 0 0 3px #fff}';
 html+='.btn-clear{background:#95a5a6;color:white;font-size:12px;padding:6px 10px}.btn-clear:hover{background:#7f8c8d}';
+html+='.btn-karaoke{background:#3498db;color:white}.btn-karaoke:hover{background:#2980b9}.btn-karaoke.active{background:#2980b9;box-shadow:inset 0 0 0 3px #fff}';
 html+='.btn-light{background:#f8f9fa;color:#333;border:1px solid #ccc}.btn-light:hover{background:#e9ecef}';
 html+='.timer-display{font-family:"Consolas",monospace;font-weight:bold;font-size:16px;color:#2c3e6b;background:white;padding:6px 12px;border-radius:8px;border:1px solid #e0e6ed;min-width:70px;text-align:center}';
 html+='.timer-estimado{font-size:11px;color:#888}.status{font-size:12px;color:#666;margin-left:auto}.selection-info{font-size:11px;color:#3498db;font-weight:bold}';
@@ -546,12 +668,23 @@ html+='.icon{font-size:0.8rem;opacity:0.6;margin-left:8px}';
 html+='.search-box{display:flex;align-items:center;background:white;border-radius:20px;padding:4px 12px;border:1px solid #ddd;margin-bottom:10px}';
 html+='.search-box input{border:none;outline:none;flex:1;padding:6px;font-size:14px;background:transparent}';
 html+='.search-box button{border:none;background:transparent;cursor:pointer;font-size:16px;color:#888}';
+html+='#karaokeModal{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:white;z-index:5000;flex-direction:column}';
+html+='#karaokeModal.show{display:flex}';
+html+='#karaokeHeader{background:linear-gradient(135deg,#1a2a4a,#2c3e6b);color:white;padding:12px 20px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px}';
+html+='#karaokeHeader h3{margin:0;font-size:1.2rem}';
+html+='#karaokeBody{flex:1;overflow-y:auto;padding:40px 60px;font-size:1.8rem;line-height:2.2;color:#212529;background:#fafbfc}';
+html+='#karaokeBody .karaoke-word{padding:2px 4px;border-radius:4px;transition:background-color 0.15s,color 0.15s}';
+html+='#karaokeBody .karaoke-word.highlight-word{background:#ffeb3b;color:#000;font-weight:bold;box-shadow:0 0 8px rgba(255,235,59,0.7)}';
+html+='#karaokeBody .karaoke-node-title{font-size:1.2rem;color:#3498db;font-weight:600;margin-bottom:15px;padding-bottom:8px;border-bottom:2px solid #e0e6ed}';
 html+='body.dark{background:#1e1e2e;color:#e0e0e0}body.dark .header{background:linear-gradient(135deg,#0d1b2a,#1b263b)}';
 html+='body.dark .node{background:#2a2a3c;color:#e0e0e0}body.dark .node:hover{background:#35355a}body.dark .node.level-0{background:#3d2e1c}';
 html+='body.dark .timer-display{background:#333;color:#fff;border-color:#555}body.dark .search-box{background:#2a2a3c;border-color:#3a3a4c}';
 html+='body.dark .search-box input{color:#e0e0e0}body.dark select{background:#333;color:#fff;border-color:#555}';
 html+='body.dark .status{color:#aaa}body.dark .timer-estimado{color:#aaa}body.dark .children{border-left-color:#3a3a4c}';
 html+='body.dark .btn-light{background:#333;color:#fff;border-color:#555}body.dark .selection-info{color:#6ab0ff}';
+html+='body.dark #karaokeBody{background:#1e1e2e;color:#e0e0e0}';
+html+='body.dark #karaokeBody .karaoke-node-title{color:#6ab0ff;border-bottom-color:#3a3a4c}';
+html+='body.dark #karaokeBody .karaoke-word.highlight-word{background:#b8860b;color:#fff;box-shadow:0 0 8px rgba(184,134,11,0.7)}';
 html+='</style></head><body><div class="container">';
 html+='<div class="header"><h1>'+titulo+'</h1></div>';
 html+='<div class="toolbar">';
@@ -559,6 +692,7 @@ html+='<button class="btn-play" id="btnPlay">▶</button>';
 html+='<button class="btn-pause" id="btnPause" style="display:none">⏸</button>';
 html+='<button class="btn-stop" id="btnStop">⏹</button>';
 html+='<button class="btn-loop" id="btnLoop">🔂</button>';
+html+='<button class="btn-karaoke" id="btnKaraoke">📖</button>';
 html+='<button class="btn-clear" id="btnClear">✕ Limpiar</button>';
 html+='<select id="voiceSelect"></select>';
 html+='<span class="timer-display" id="timerDisplay">00:00</span>';
@@ -573,6 +707,7 @@ html+='<button class="btn-light" id="btnTheme">🌙 Modo Oscuro</button>';
 html+='</div>';
 html+='<div class="search-box"><input type="text" id="searchInput" placeholder="Buscar..."><button id="clearSearch">✕</button></div>';
 html+='<div id="mapa"></div></div>';
+html+='<div id="karaokeModal"><div id="karaokeHeader"><h3 id="karaokeTitle">📖 Lectura Asistida</h3><div><button class="btn-play" id="kPlay">▶</button><button class="btn-pause" id="kPause" style="display:none">⏸</button><button class="btn-stop" id="kStop">⏹</button><button id="kClose" style="background:#e74c3c;color:white">✕ Cerrar</button></div></div><div id="karaokeBody"></div></div>';
 html+=tagPlainOpen;html+=contenidoSeguro;html+=tagPlainClose;
 html+=tagScriptOpen;
 html+='(function(){';
@@ -580,14 +715,13 @@ html+='var raw=document.getElementById("raw-content").textContent;';
 html+='var synth=window.speechSynthesis;';
 html+='var utterance=null,listaNodos=[],indiceActual=0,bloqueado=false,bucleActivo=false,estadoReproductor="detenido";';
 html+='var cronoInterval=null,cronoSegundos=0,cronoInicioTramo=0,vocesCargadas=[],generacion=0,seleccionados=new Set();';
-html+='var btnPlay=document.getElementById("btnPlay"),btnPause=document.getElementById("btnPause"),btnStop=document.getElementById("btnStop"),btnLoop=document.getElementById("btnLoop"),btnClear=document.getElementById("btnClear");';
+html+='var karaokeActivo=false,karaokeWords=[],karaokePositions=[],karaokeCurrentIdx=-1;';
+html+='var btnPlay=document.getElementById("btnPlay"),btnPause=document.getElementById("btnPause"),btnStop=document.getElementById("btnStop"),btnLoop=document.getElementById("btnLoop"),btnClear=document.getElementById("btnClear"),btnKaraoke=document.getElementById("btnKaraoke");';
 html+='var voiceSelect=document.getElementById("voiceSelect"),statusEl=document.getElementById("status"),timerDisplay=document.getElementById("timerDisplay"),timerEstimado=document.getElementById("timerEstimado"),mapaDiv=document.getElementById("mapa"),selectionInfo=document.getElementById("selectionInfo");';
-var parserFn=parsear.toString();
-html+='var parsear='+parserFn+';';
-var limpiarFn=limpiarTexto.toString();
-html+='var limpiarTexto='+limpiarFn+';';
-var obtenerFn=obtenerTextoNodoYHijos.toString();
-html+='var obtenerTextoNodoYHijos='+obtenerFn+';';
+html+='var karaokeModal=document.getElementById("karaokeModal"),karaokeBody=document.getElementById("karaokeBody"),kPlay=document.getElementById("kPlay"),kPause=document.getElementById("kPause"),kStop=document.getElementById("kStop"),kClose=document.getElementById("kClose");';
+var parserFn=parsear.toString();html+='var parsear='+parserFn+';';
+var limpiarFn=limpiarTexto.toString();html+='var limpiarTexto='+limpiarFn+';';
+var obtenerFn=obtenerTextoNodoYHijos.toString();html+='var obtenerTextoNodoYHijos='+obtenerFn+';';
 html+='function prepararLista(){var res=parsear(raw);var lista=[];if(seleccionados.size>0){res.nodos.forEach(function(nodo){if(seleccionados.has(nodo.etiqueta)){var textos=obtenerTextoNodoYHijos(nodo.id,res);textos.forEach(function(t){if(lista.indexOf(t)===-1)lista.push(t);});}});return lista;}function rec(id){var nodo=null;for(var i=0;i<res.nodos.length;i++){if(res.nodos[i].id===id){nodo=res.nodos[i];break;}}if(!nodo)return;lista.push(nodo.etiqueta);var hijos=res.hijosMap.get(id)||[];hijos.forEach(rec);}res.raices.forEach(function(r){rec(r.id);});return lista;}';
 html+='function actualizarInfoSeleccion(){if(seleccionados.size===0)selectionInfo.textContent="";else selectionInfo.textContent="☑ "+seleccionados.size+" seleccionado"+(seleccionados.size>1?"s":"");}';
 html+='function generarMapa(){var res=parsear(raw);var nodosMap=new Map();res.nodos.forEach(function(n){nodosMap.set(n.id,n);});var hijosMap=res.hijosMap;mapaDiv.innerHTML="";if(!res.raices.length){mapaDiv.innerHTML="<div style=\\"text-align:center;color:#999;padding:40px;\\">Sin contenido</div>";return;}function construir(id){var nodo=nodosMap.get(id);if(!nodo)return null;var hijos=hijosMap.get(id)||[];var card=document.createElement("div");card.className="node level-"+Math.min(nodo.nivel,4);var chk=document.createElement("input");chk.type="checkbox";chk.checked=seleccionados.has(nodo.etiqueta);chk.onclick=function(e){e.stopPropagation();};chk.onchange=function(e){e.stopPropagation();if(chk.checked)seleccionados.add(nodo.etiqueta);else seleccionados.delete(nodo.etiqueta);actualizarInfoSeleccion();calcularEstimacion();};card.appendChild(chk);var sp=document.createElement("span");sp.className="node-text";sp.textContent=nodo.etiqueta;card.appendChild(sp);if(hijos.length){var icon=document.createElement("span");icon.className="icon";icon.textContent="▶";card.appendChild(icon);var cont=document.createElement("div");cont.className="children collapsed";hijos.forEach(function(h){var c=construir(h);if(c)cont.appendChild(c);});card.appendChild(cont);card.onclick=function(e){e.stopPropagation();cont.classList.toggle("collapsed");icon.textContent=cont.classList.contains("collapsed")?"▶":"▼";};}return card;}res.raices.forEach(function(r){var c=construir(r.id);if(c)mapaDiv.appendChild(c);});calcularEstimacion();actualizarInfoSeleccion();}';
@@ -600,14 +734,19 @@ html+='function formatearTiempo(s){var m=Math.floor(s/60);var g=s%60;return(m<10
 html+='function iniciarCrono(){if(cronoInterval)return;cronoInicioTramo=Date.now();cronoInterval=setInterval(function(){var t=Math.floor((Date.now()-cronoInicioTramo)/1000);timerDisplay.textContent=formatearTiempo(cronoSegundos+t);},250);}';
 html+='function pausarCrono(){if(!cronoInterval)return;var t=Math.floor((Date.now()-cronoInicioTramo)/1000);cronoSegundos+=t;clearInterval(cronoInterval);cronoInterval=null;timerDisplay.textContent=formatearTiempo(cronoSegundos);}';
 html+='function resetCrono(){if(cronoInterval){clearInterval(cronoInterval);cronoInterval=null;}cronoSegundos=0;cronoInicioTramo=0;timerDisplay.textContent="00:00";}';
+html+='function prepararKaraoke(txtOrig){karaokeBody.innerHTML="";karaokeWords=[];karaokePositions=[];karaokeCurrentIdx=-1;var limpio=limpiarTexto(txtOrig);if(!limpio){karaokeBody.textContent="(Sin texto)";return;}var title=document.createElement("div");title.className="karaoke-node-title";title.textContent="▶ "+txtOrig;karaokeBody.appendChild(title);var container=document.createElement("div");var palabras=limpio.split(/\\s+/);var pos=0;for(var i=0;i<palabras.length;i++){var w=palabras[i];if(!w){pos++;continue;}var span=document.createElement("span");span.textContent=w;span.className="karaoke-word";span.dataset.idx=i;container.appendChild(span);karaokePositions.push({start:pos,end:pos+w.length,idx:i});pos+=w.length+1;container.appendChild(document.createTextNode(" "));karaokeWords.push(span);}karaokeBody.appendChild(container);}';
+html+='function resaltarPalabra(ci){if(!karaokeActivo)return;if(karaokePositions.length===0)return;for(var i=0;i<karaokePositions.length;i++){var p=karaokePositions[i];if(ci>=p.start&&ci<p.end){if(karaokeCurrentIdx!==i){if(karaokeCurrentIdx>=0&&karaokeWords[karaokeCurrentIdx])karaokeWords[karaokeCurrentIdx].classList.remove("highlight-word");karaokeWords[i].classList.add("highlight-word");karaokeCurrentIdx=i;try{karaokeWords[i].scrollIntoView({block:"center",behavior:"smooth"});}catch(e){}}return;}}}';
 html+='function limpiarSynth(){generacion++;try{if(utterance){utterance.onend=null;utterance.onerror=null;utterance.onstart=null;utterance.onboundary=null;}if(synth.paused)synth.resume();synth.cancel();}catch(e){}}';
-html+='function hablar(texto,onDone){if(vocesCargadas.length===0)vocesCargadas=obtenerVocesEspanol();if(vocesCargadas.length===0){statusEl.textContent="⚠ Cargando voces...";setTimeout(function(){hablar(texto,onDone);},400);return;}limpiarSynth();var miGen=generacion;setTimeout(function(){if(miGen!==generacion)return;if(estadoReproductor!=="leyendo")return;try{var u=new SpeechSynthesisUtterance(texto);if(!asignarVoz(u)){statusEl.textContent="⚠ Sin voz";onDone();return;}u.rate=0.9;u.pitch=1;u.volume=1;u.onend=function(){if(miGen!==generacion)return;if(estadoReproductor!=="leyendo")return;onDone();};u.onerror=function(e){var err=e.error||"";if(err==="interrupted"||err==="canceled")return;if(miGen!==generacion)return;console.warn("Voz error:",err);if(estadoReproductor==="leyendo")setTimeout(function(){if(estadoReproductor==="leyendo"&&miGen===generacion)onDone();},200);};utterance=u;synth.speak(u);}catch(e){console.error(e);if(miGen===generacion)onDone();}},200);}';
-html+='function leerSiguiente(){if(bloqueado)return;if(estadoReproductor!=="leyendo")return;if(indiceActual>=listaNodos.length){if(bucleActivo){indiceActual=0;statusEl.textContent="🔂 Bucle reiniciando...";setTimeout(leerSiguiente,500);return;}estadoReproductor="detenido";statusEl.textContent="Lectura finalizada";btnPlay.textContent="▶";btnPause.style.display="none";indiceActual=0;pausarCrono();return;}var texto=listaNodos[indiceActual];var limpio=limpiarTexto(texto);if(!limpio){indiceActual++;leerSiguiente();return;}var p=bucleActivo?"🔂 ":"🔊 ";var si=seleccionados.size>0?" [CRIBA]":"";statusEl.textContent=p+"Leyendo ("+(indiceActual+1)+"/"+listaNodos.length+")"+si;hablar(limpio,function(){indiceActual++;leerSiguiente();});}';
+html+='function hablar(texto,onDone){if(vocesCargadas.length===0)vocesCargadas=obtenerVocesEspanol();if(vocesCargadas.length===0){statusEl.textContent="⚠ Cargando voces...";setTimeout(function(){hablar(texto,onDone);},400);return;}limpiarSynth();var miGen=generacion;setTimeout(function(){if(miGen!==generacion)return;if(estadoReproductor!=="leyendo")return;try{var u=new SpeechSynthesisUtterance(texto);if(!asignarVoz(u)){statusEl.textContent="⚠ Sin voz";onDone();return;}u.rate=0.9;u.pitch=1;u.volume=1;u.onboundary=function(ev){if(!karaokeActivo)return;if(miGen!==generacion)return;if(ev.name==="word"||ev.name==="sentence")resaltarPalabra(ev.charIndex);};u.onend=function(){if(miGen!==generacion)return;if(estadoReproductor!=="leyendo")return;onDone();};u.onerror=function(e){var err=e.error||"";if(err==="interrupted"||err==="canceled")return;if(miGen!==generacion)return;console.warn("Voz error:",err);if(estadoReproductor==="leyendo")setTimeout(function(){if(estadoReproductor==="leyendo"&&miGen===generacion)onDone();},200);};utterance=u;synth.speak(u);}catch(e){console.error(e);if(miGen===generacion)onDone();}},200);}';
+html+='function leerSiguiente(){if(bloqueado)return;if(estadoReproductor!=="leyendo")return;if(indiceActual>=listaNodos.length){if(bucleActivo){indiceActual=0;statusEl.textContent="🔂 Bucle reiniciando...";setTimeout(leerSiguiente,500);return;}estadoReproductor="detenido";statusEl.textContent="Lectura finalizada";btnPlay.textContent="▶";btnPause.style.display="none";indiceActual=0;pausarCrono();return;}var texto=listaNodos[indiceActual];var limpio=limpiarTexto(texto);if(!limpio){indiceActual++;leerSiguiente();return;}var p=bucleActivo?"🔂 ":"🔊 ";var si=seleccionados.size>0?" [CRIBA]":"";statusEl.textContent=p+"Leyendo ("+(indiceActual+1)+"/"+listaNodos.length+")"+si;if(karaokeActivo)prepararKaraoke(texto);hablar(limpio,function(){indiceActual++;leerSiguiente();});}';
 html+='btnPlay.onclick=function(){if(estadoReproductor==="leyendo"){estadoReproductor="pausado";limpiarSynth();btnPlay.textContent="▶";btnPause.style.display="inline-block";statusEl.textContent="⏸ Pausado";pausarCrono();return;}if(estadoReproductor==="pausado"){estadoReproductor="leyendo";btnPlay.textContent="⏸";btnPause.style.display="none";statusEl.textContent="🔊 Reanudando...";iniciarCrono();setTimeout(function(){leerSiguiente();},250);return;}bloqueado=false;listaNodos=prepararLista();if(!listaNodos.length){statusEl.textContent="Sin contenido";return;}indiceActual=0;resetCrono();iniciarCrono();estadoReproductor="leyendo";var si=seleccionados.size>0?" (CRIBA: "+seleccionados.size+" nodos)":"";statusEl.textContent="🔊 Iniciando..."+si;btnPlay.textContent="⏸";btnPause.style.display="none";setTimeout(function(){leerSiguiente();},250);};';
 html+='btnPause.onclick=function(){if(estadoReproductor==="leyendo"){estadoReproductor="pausado";limpiarSynth();btnPlay.textContent="▶";btnPause.style.display="none";statusEl.textContent="⏸ Pausado";pausarCrono();}};';
 html+='btnStop.onclick=function(){bloqueado=true;estadoReproductor="detenido";limpiarSynth();utterance=null;indiceActual=0;listaNodos=[];btnPlay.textContent="▶";btnPause.style.display="none";statusEl.textContent="Detenido";resetCrono();setTimeout(function(){bloqueado=false;},250);};';
 html+='btnLoop.onclick=function(){bucleActivo=!bucleActivo;btnLoop.classList.toggle("active",bucleActivo);statusEl.textContent=bucleActivo?"🔂 Bucle ACTIVADO":"🔂 Bucle desactivado";};';
 html+='btnClear.onclick=function(){seleccionados.clear();actualizarInfoSeleccion();generarMapa();statusEl.textContent="✕ Selección limpiada";};';
+html+='btnKaraoke.onclick=function(){karaokeActivo=!karaokeActivo;btnKaraoke.classList.toggle("active",karaokeActivo);if(karaokeActivo){karaokeModal.classList.add("show");statusEl.textContent="📖 Karaoke ACTIVADO";if(listaNodos.length>0&&indiceActual<listaNodos.length)prepararKaraoke(listaNodos[indiceActual]);else{var lista=prepararLista();if(lista.length>0)prepararKaraoke(lista[0]);else karaokeBody.innerHTML="<div style=\\"text-align:center;color:#999;padding:40px\\">Sin contenido</div>";}}else{karaokeModal.classList.remove("show");statusEl.textContent="📖 Karaoke desactivado";}};';
+html+='kClose.onclick=function(){karaokeActivo=false;btnKaraoke.classList.remove("active");karaokeModal.classList.remove("show");statusEl.textContent="📖 Karaoke cerrado";};';
+html+='kPlay.onclick=function(){btnPlay.click();};kPause.onclick=function(){btnPause.click();};kStop.onclick=function(){btnStop.click();};';
 html+='document.getElementById("btnExpandir").onclick=function(){document.querySelectorAll(".children").forEach(function(c){c.classList.remove("collapsed");});document.querySelectorAll(".icon").forEach(function(i){i.textContent="▼";});};';
 html+='document.getElementById("btnColapsar").onclick=function(){document.querySelectorAll(".children").forEach(function(c){c.classList.add("collapsed");});document.querySelectorAll(".icon").forEach(function(i){i.textContent="▶";});};';
 html+='document.getElementById("btnTheme").onclick=function(){document.body.classList.toggle("dark");this.textContent=document.body.classList.contains("dark")?"☀ Claro":"🌙 Modo Oscuro";};';
