@@ -4,6 +4,8 @@
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>Nexus Acelerador</title>
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
 <style>
 body{font-family:'Segoe UI',sans-serif;background:#f4f7fc;color:#333;padding:20px;margin:0}
 .container{max-width:1200px;margin:auto}
@@ -14,6 +16,8 @@ body{font-family:'Segoe UI',sans-serif;background:#f4f7fc;color:#333;padding:20p
 .btn-outline-light:hover{background:rgba(255,255,255,0.2)}
 .btn-success{background:#2ecc71;color:white}
 .btn-success:hover{background:#27ae60}
+.btn-import{background:#9b59b6;color:white}
+.btn-import:hover{background:#8e44ad}
 .grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}
 @media(max-width:768px){.grid{grid-template-columns:1fr}}
 .panel{background:white;border-radius:12px;padding:15px;box-shadow:0 2px 10px rgba(0,0,0,0.05);height:70vh;overflow-y:auto}
@@ -50,6 +54,29 @@ textarea{width:100%;height:100%;border:none;outline:none;font-family:'Consolas',
 .dropdown-item{display:block;padding:8px 16px;color:#333;text-decoration:none;cursor:pointer;font-size:14px;white-space:nowrap}
 .dropdown-item:hover{background:#f0f5fa}
 .dropdown-item i{margin-right:8px;color:#666}
+/* Modal genérico */
+.modal-overlay{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:3000;align-items:center;justify-content:center}
+.modal-overlay.show{display:flex}
+.modal-content{background:white;border-radius:16px;max-width:600px;width:90%;padding:24px;max-height:85vh;overflow-y:auto;box-shadow:0 8px 24px rgba(0,0,0,0.2)}
+.modal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
+.modal-title{font-size:1.2rem;font-weight:600;margin:0}
+.modal-close{background:transparent;border:none;font-size:1.6rem;cursor:pointer;color:#666}
+.modal-close:hover{color:#000}
+.btn-block{width:100%;padding:10px;border-radius:10px;font-size:14px}
+.file-drop{border:2px dashed #3498db;border-radius:12px;padding:20px;text-align:center;background:#f8f9fc;margin-bottom:12px;cursor:pointer;transition:background 0.2s}
+.file-drop:hover{background:#e8f0f8}
+.file-drop.dragover{background:#d4e6f5;border-color:#2ecc71}
+.file-drop p{margin:6px 0;color:#666;font-size:13px}
+.file-drop strong{color:#3498db}
+.or-sep{text-align:center;color:#999;font-size:12px;margin:12px 0;position:relative}
+.or-sep::before,.or-sep::after{content:'';position:absolute;top:50%;width:40%;height:1px;background:#ddd}
+.or-sep::before{left:0}
+.or-sep::after{right:0}
+.import-progress{display:none;text-align:center;padding:20px}
+.import-progress.show{display:block}
+.spinner{border:4px solid #f3f3f3;border-top:4px solid #3498db;border-radius:50%;width:40px;height:40px;animation:spin 1s linear infinite;margin:0 auto 12px}
+@keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}
+/* Karaoke */
 #karaokeModal{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:#ffffff;z-index:5000;flex-direction:column}
 #karaokeModal.show{display:flex}
 #karaokeHeader{background:linear-gradient(135deg,#1a2a4a,#2c3e6b);color:white;padding:12px 20px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px}
@@ -70,6 +97,7 @@ body.dark #karaokeBody .karaoke-word.highlight-word{background:#b8860b;color:#ff
 <div class="header">
 <h2 style="margin:0">Nexus Acelerador</h2>
 <div style="display:flex;gap:8px;flex-wrap:wrap">
+<button class="btn btn-import" id="btnImportar" title="Importar contenido">📥 Importar</button>
 <button class="btn btn-outline-light" id="btnSumula">SÚMULA</button>
 <button class="btn btn-outline-light" id="btnCorolario">Corolario</button>
 <div class="dropdown">
@@ -104,6 +132,35 @@ body.dark #karaokeBody .karaoke-word.highlight-word{background:#b8860b;color:#ff
 </div>
 </div>
 
+<!-- MÓDULO 8 · IMPORTADOR -->
+<div class="modal-overlay" id="importModal">
+<div class="modal-content">
+<div class="modal-header">
+<h3 class="modal-title">📥 Importar contenido</h3>
+<button class="modal-close" id="importClose">&times;</button>
+</div>
+<div id="importForm">
+<div class="file-drop" id="fileDrop">
+<input type="file" id="fileInput" accept=".pdf,.docx,.txt,.html,.htm,.md" style="display:none">
+<p style="font-size:32px;margin:0">📄</p>
+<p><strong>Clic para seleccionar</strong> o arrastra un archivo aquí</p>
+<p>PDF · DOCX · TXT · HTML · MD</p>
+</div>
+<div class="or-sep">o pega el texto directamente</div>
+<textarea id="pasteArea" class="form-control" rows="6" placeholder="Pega aquí el contenido..." style="font-family:monospace;font-size:13px;resize:vertical;border:1px solid #ddd;border-radius:10px;padding:10px;margin-bottom:12px"></textarea>
+<div style="display:flex;gap:8px;flex-wrap:wrap">
+<button class="btn btn-light" id="btnCancelImport" style="flex:1">Cancelar</button>
+<button class="btn btn-success" id="btnProcessImport" style="flex:2">🎯 Procesar a SÚMULA</button>
+</div>
+<p style="font-size:11px;color:#888;margin-top:8px;text-align:center">El HTML se analiza estructuralmente · El texto plano se convierte con reglas</p>
+</div>
+<div class="import-progress" id="importProgress">
+<div class="spinner"></div>
+<p id="importProgressText">Procesando...</p>
+</div>
+</div>
+</div>
+
 <div id="karaokeModal">
 <div id="karaokeHeader">
 <h3 id="karaokeTitle">📖 Lectura Asistida</h3>
@@ -119,8 +176,7 @@ body.dark #karaokeBody .karaoke-word.highlight-word{background:#b8860b;color:#ff
 
 <script>
 (function(){
-// ✅ FIX 1: Forzar idioma del documento para eliminar el warning de Chrome
-document.documentElement.lang = 'es-ES';
+document.documentElement.lang='es-ES';
 
 var textarea=document.getElementById('contenido');
 var mapaDiv=document.getElementById('mapa');
@@ -143,6 +199,18 @@ var kPause=document.getElementById('kPause');
 var kStop=document.getElementById('kStop');
 var kClose=document.getElementById('kClose');
 var btnRec=document.getElementById('btnRec');
+// MÓDULO 8
+var btnImportar=document.getElementById('btnImportar');
+var importModal=document.getElementById('importModal');
+var importClose=document.getElementById('importClose');
+var importForm=document.getElementById('importForm');
+var importProgress=document.getElementById('importProgress');
+var importProgressText=document.getElementById('importProgressText');
+var fileDrop=document.getElementById('fileDrop');
+var fileInput=document.getElementById('fileInput');
+var pasteArea=document.getElementById('pasteArea');
+var btnProcessImport=document.getElementById('btnProcessImport');
+var btnCancelImport=document.getElementById('btnCancelImport');
 
 var synth=window.speechSynthesis;
 var utterance=null;
@@ -168,6 +236,9 @@ var grabando=false;
 var ejemplo="# Acelerador de Conocimiento\n## ¿Qué es?\n- Herramienta para estructurar ideas jerárquicamente.\n## ¿Para qué sirve?\n- Planificar cursos, proyectos.\n## Características\n### Edición en tiempo real\n### Interactividad";
 textarea.value=localStorage.getItem('nexus_contenido')||ejemplo;
 
+// =====================================================
+// NÚCLEO SÚMULA
+// =====================================================
 function parsear(texto){
 var lineas=texto.split('\n');var nodos=[];var pila=[];var id=1;var tieneMarkdown=false;
 for(var k=0;k<lineas.length;k++){var l=lineas[k].trim();if(l.indexOf('# ')===0||l.indexOf('## ')===0||l.indexOf('### ')===0||l.indexOf('- ')===0||l.indexOf('* ')===0){tieneMarkdown=true;break;}}
@@ -186,7 +257,6 @@ var hijosMap=new Map();nodos.forEach(function(n){hijosMap.set(n.id,[]);});
 nodos.forEach(function(n){if(n.padreId!==null)hijosMap.get(n.padreId).push(n.id);});
 return{nodos:nodos,hijosMap:hijosMap,raices:nodos.filter(function(n){return n.padreId===null;})};
 }
-
 function obtenerTextoNodoYHijos(id,resultado){
 var partes=[];
 function rec(id){
@@ -260,13 +330,11 @@ if(pref>=0)voiceSelect.selectedIndex=pref;
 if(synth.onvoiceschanged!==undefined)synth.onvoiceschanged=function(){poblarVoces();};
 poblarVoces();setTimeout(poblarVoces,100);setTimeout(poblarVoces,300);setTimeout(poblarVoces,800);setTimeout(poblarVoces,1500);
 
-// ✅ FIX 2: Asignar lang ANTES de voice para evitar el warning
 function asignarVoz(u){
 vocesCargadas=obtenerVocesEspanol();
 if(vocesCargadas.length===0)return false;
 var idx=parseInt(voiceSelect.value);
 if(isNaN(idx)||idx<0||idx>=vocesCargadas.length)idx=0;
-// ✅ lang primero, voice después
 u.lang='es-ES';
 u.voice=vocesCargadas[idx];
 return true;
@@ -363,7 +431,6 @@ if(miGeneracion!==generacion)return;
 if(estadoReproductor!=='leyendo')return;
 try{
 var u=new SpeechSynthesisUtterance(texto);
-// ✅ lang ANTES de voice
 u.lang='es-ES';
 if(!asignarVoz(u)){voiceStatus.textContent='⚠️ Sin voz';onDone();return;}
 u.rate=0.9;u.pitch=1;u.volume=1;
@@ -470,164 +537,380 @@ kPause.addEventListener('click',function(){btnPause.click();});
 kStop.addEventListener('click',function(){btnStop.click();});
 
 // ==========================================================
-// MÓDULO 7 · CAPTURA — Versión con detección de soporte
+// MÓDULO 7 · CAPTURA
 // ==========================================================
-function detectarSoporteGrabacion(){
-var info={
-getDisplayMedia: !!(navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia),
-mediaRecorder: typeof MediaRecorder !== 'undefined',
-esFirefox: navigator.userAgent.indexOf('Firefox') !== -1,
-esSafari: /^((?!chrome|android).)*safari/i.test(navigator.userAgent),
-esChrome: navigator.userAgent.indexOf('Chrome') !== -1
-};
-return info;
-}
-
 async function toggleGrabacion(){
-if(grabando){
-try{mediaRecorder.stop();}catch(e){}
-return;
-}
-
-var soporte=detectarSoporteGrabacion();
-
-// Diagnóstico inicial
-if(!soporte.getDisplayMedia){
-alert('❌ Tu navegador no soporta captura de pantalla/pestaña.\n\nUsa Chrome o Edge actualizado.');
-return;
-}
-if(!soporte.mediaRecorder){
-alert('❌ Tu navegador no soporta MediaRecorder.\n\nUsa Chrome o Edge actualizado.');
-return;
-}
-if(soporte.esFirefox){
-var continuar=confirm('⚠️ NOTA PARA FIREFOX:\n\nFirefox NO soporta capturar audio de la pestaña en la mayoría de sistemas. Solo capturará video sin audio.\n\nPara grabar audio, usa CHROME o EDGE.\n\n¿Quieres intentar de todas formas?');
-if(!continuar)return;
-}
-
+if(grabando){try{mediaRecorder.stop();}catch(e){}return;}
+if(!navigator.mediaDevices||!navigator.mediaDevices.getDisplayMedia){alert('Tu navegador no soporta la grabación. Usa Chrome o Edge.');return;}
+if(typeof MediaRecorder==='undefined'){alert('MediaRecorder no soportado. Usa Chrome o Edge.');return;}
 try{
-// ✅ Cadena de intentos para máxima compatibilidad
-var stream=null;
-var errores=[];
-// Intento 1: Solo audio (Chrome/Edge modernos)
-try{
-stream=await navigator.mediaDevices.getDisplayMedia({audio:true,video:false});
-}catch(e1){errores.push('audio-only: '+e1.name);}
-// Intento 2: Audio + video (algunos navegadores lo exigen)
-if(!stream){
-try{
-stream=await navigator.mediaDevices.getDisplayMedia({audio:true,video:true});
-}catch(e2){errores.push('audio+video: '+e2.name);}
-}
-// Intento 3: Solo video (último recurso)
-if(!stream){
-try{
-stream=await navigator.mediaDevices.getDisplayMedia({video:true});
-}catch(e3){errores.push('video-only: '+e3.name);}
-}
-
-if(!stream){
-alert('❌ No se pudo iniciar la captura.\n\nErrores:\n'+errores.join('\n')+'\n\nRecomendación: Usa CHROME o EDGE actualizado y marca "Compartir audio de la pestaña" al seleccionar.');
-return;
-}
-
-// Verificar si hay audio
+var stream=null;var errs=[];
+try{stream=await navigator.mediaDevices.getDisplayMedia({audio:true,video:false});}catch(e1){errs.push('audio-only:'+e1.name);}
+if(!stream){try{stream=await navigator.mediaDevices.getDisplayMedia({audio:true,video:true});}catch(e2){errs.push('audio+video:'+e2.name);}}
+if(!stream){try{stream=await navigator.mediaDevices.getDisplayMedia({video:true});}catch(e3){errs.push('video-only:'+e3.name);}}
+if(!stream){alert('No se pudo capturar.\n\nErrores:\n'+errs.join('\n')+'\n\nUsa CHROME o EDGE y marca Compartir audio de la pestaña.');return;}
 var hasAudio=stream.getAudioTracks().length>0;
-if(!hasAudio){
-voiceStatus.textContent='⚠️ No se capturó audio';
-try{stream.getTracks().forEach(function(t){t.stop();});}catch(e){}
-alert('⚠️ Se capturó VIDEO pero NO AUDIO.\n\nCuando el navegador te pida compartir:\n1. Selecciona la PESTAÑA "sumula-nine.vercel.app" (no la pantalla completa)\n2. Activa la casilla "Compartir audio de la pestaña" (abajo izquierda)\n3. Pulsa "Compartir"\n\nEn Chrome es la opción "También compartir audio de la pestaña".');
-return;
-}
-
-// ✅ Extraer SOLO el audio del stream (evita grabar video)
+if(!hasAudio){voiceStatus.textContent='⚠️ No se capturó audio';try{stream.getTracks().forEach(function(t){t.stop();});}catch(e){}alert('Se capturó VIDEO pero NO AUDIO.\n\nSelecciona la PESTAÑA actual y marca Compartir audio de la pestaña.');return;}
 var audioStream=new MediaStream(stream.getAudioTracks());
-
 audioChunks=[];
-// Detectar el mejor códec
 var mimeType='';
 if(typeof MediaRecorder.isTypeSupported==='function'){
 var tipos=['audio/webm;codecs=opus','audio/webm','audio/mp4;codecs=mp4a','audio/mp4','audio/ogg;codecs=opus','audio/ogg'];
-for(var i=0;i<tipos.length;i++){
-if(MediaRecorder.isTypeSupported(tipos[i])){mimeType=tipos[i];break;}
+for(var i=0;i<tipos.length;i++){if(MediaRecorder.isTypeSupported(tipos[i])){mimeType=tipos[i];break;}}
 }
-}
-
 var opts=mimeType?{mimeType:mimeType}:{};
-try{
-mediaRecorder=new MediaRecorder(audioStream,opts);
-}catch(e3){
-try{
-mediaRecorder=new MediaRecorder(audioStream);
-}catch(e4){
-alert('❌ MediaRecorder no acepta este formato de audio.\n\nError: '+e4.message);
-try{stream.getTracks().forEach(function(t){t.stop();});}catch(e){}
-return;
-}
-}
-
+try{mediaRecorder=new MediaRecorder(audioStream,opts);}catch(e3){try{mediaRecorder=new MediaRecorder(audioStream);}catch(e4){alert('MediaRecorder no acepta este audio.\n'+e4.message);try{stream.getTracks().forEach(function(t){t.stop();});}catch(e){}return;}}
 mediaRecorder.ondataavailable=function(e){if(e.data&&e.data.size>0)audioChunks.push(e.data);};
-
 mediaRecorder.onstop=function(){
-if(audioChunks.length===0){
-voiceStatus.textContent='⚠️ No se grabó audio';
-grabando=false;btnRec.classList.remove('recording');btnRec.textContent='⏺';
-return;
-}
+if(audioChunks.length===0){voiceStatus.textContent='⚠️ No se grabó audio';grabando=false;btnRec.classList.remove('recording');btnRec.textContent='⏺';return;}
 var tipo=mediaRecorder.mimeType||'audio/webm';
 var ext=tipo.indexOf('mp4')!==-1?'mp4':(tipo.indexOf('ogg')!==-1?'ogg':'webm');
 var blob=new Blob(audioChunks,{type:tipo});
 var url=URL.createObjectURL(blob);
-var a=document.createElement('a');
-a.href=url;
+var a=document.createElement('a');a.href=url;
 var resultado=parsear(textarea.value);
 var titulo=resultado.raices.length>0?resultado.raices[0].etiqueta:'audio';
 a.download=titulo.replace(/[^a-z0-9]/gi,'_').substring(0,40)+'_'+Date.now()+'.'+ext;
 document.body.appendChild(a);a.click();document.body.removeChild(a);
 setTimeout(function(){URL.revokeObjectURL(url);},1000);
-grabando=false;
-btnRec.classList.remove('recording');
-btnRec.textContent='⏺';
+grabando=false;btnRec.classList.remove('recording');btnRec.textContent='⏺';
 voiceStatus.textContent='✅ Grabación descargada ('+ext.toUpperCase()+', '+(blob.size/1024).toFixed(0)+' KB)';
 };
-
-// Detectar cuando el usuario detiene desde el navegador
-stream.getTracks().forEach(function(t){
-t.onended=function(){
-if(grabando){try{mediaRecorder.stop();}catch(e){}}
-};
-});
-
+stream.getTracks().forEach(function(t){t.onended=function(){if(grabando){try{mediaRecorder.stop();}catch(e){}}}});
 mediaRecorder.start(1000);
-grabando=true;
-btnRec.classList.add('recording');
-btnRec.textContent='⏹';
+grabando=true;btnRec.classList.add('recording');btnRec.textContent='⏹';
 voiceStatus.textContent='⏺ GRABANDO... (pulsa ⏺ para detener)';
-setTimeout(function(){
-if(grabando)voiceStatus.textContent='⏺ Grabando... pulsa ⏺ de nuevo para detener y descargar';
-},2000);
-
+setTimeout(function(){if(grabando)voiceStatus.textContent='⏺ Grabando... pulsa ⏺ de nuevo para detener y descargar';},2000);
 }catch(err){
 console.error('Error grabación:',err);
 voiceStatus.textContent='⚠️ Grabación cancelada';
 var msg='No se pudo iniciar la grabación.\n\n';
-if(err.name==='NotAllowedError'){
-msg+='Causa: No autorizaste la captura o la cancelaste.';
-}else if(err.name==='NotSupportedError'){
-msg+='Causa: Tu navegador no soporta esta función.\n\n✅ Solución: Usa CHROME o EDGE actualizado.';
-}else if(err.name==='InvalidStateError'){
-msg+='Causa: Ya hay una captura activa.';
-}else{
-msg+='Error: '+err.name+'\n'+err.message;
-}
+if(err.name==='NotAllowedError')msg+='Causa: No autorizaste la captura o la cancelaste.';
+else if(err.name==='NotSupportedError')msg+='Causa: Tu navegador no soporta esta función.\n\n✅ Solución: Usa CHROME o EDGE actualizado.';
+else msg+='Error: '+err.name+'\n'+err.message;
 alert(msg);
-grabando=false;
-btnRec.classList.remove('recording');
-btnRec.textContent='⏺';
+grabando=false;btnRec.classList.remove('recording');btnRec.textContent='⏺';
 }
 }
 btnRec.addEventListener('click',toggleGrabacion);
 
+// ==========================================================
+// MÓDULO 8 · IMPORTADOR
+// ==========================================================
+
+// Abrir modal
+btnImportar.addEventListener('click',function(){
+importForm.style.display='block';
+importProgress.classList.remove('show');
+pasteArea.value='';
+fileInput.value='';
+fileDrop.querySelector('p:last-of-type').textContent='PDF · DOCX · TXT · HTML · MD';
+importModal.classList.add('show');
+});
+
+// Cerrar modal
+function cerrarImport(){importModal.classList.remove('show');}
+importClose.addEventListener('click',cerrarImport);
+btnCancelImport.addEventListener('click',cerrarImport);
+importModal.addEventListener('click',function(e){if(e.target===importModal)cerrarImport();});
+
+// File drop
+fileDrop.addEventListener('click',function(){fileInput.click();});
+fileDrop.addEventListener('dragover',function(e){e.preventDefault();fileDrop.classList.add('dragover');});
+fileDrop.addEventListener('dragleave',function(){fileDrop.classList.remove('dragover');});
+fileDrop.addEventListener('drop',function(e){
+e.preventDefault();
+fileDrop.classList.remove('dragover');
+if(e.dataTransfer.files.length>0){
+fileInput.files=e.dataTransfer.files;
+mostrarArchivoSeleccionado();
+}
+});
+fileInput.addEventListener('change',mostrarArchivoSeleccionado);
+function mostrarArchivoSeleccionado(){
+if(fileInput.files.length>0){
+var f=fileInput.files[0];
+var nombre=f.name.length>35?f.name.substring(0,32)+'...':f.name;
+fileDrop.querySelector('p:last-of-type').innerHTML='<strong>'+nombre+'</strong> ('+Math.round(f.size/1024)+' KB)';
+}
+}
+
+// ==========================================================
+// MOTOR DE CONVERSIÓN A SÚMULA
+// ==========================================================
+
+// Analiza HTML y extrae estructura
+function convertirHtmlASumula(htmlString){
+if(!htmlString.trim())return '';
+try{
+var parser=new DOMParser();
+var doc=parser.parseFromString(htmlString,'text/html');
+var title=doc.querySelector('title');
+title=title?title.textContent.trim():'Documento HTML';
+var metaDesc=doc.querySelector('meta[name="description"]');
+metaDesc=metaDesc?metaDesc.getAttribute('content')||'':'';
+var h1=doc.querySelector('h1');
+h1=h1?h1.textContent.trim():'';
+var result=[];
+result.push('# '+title);
+result.push('## ¿Qué es?');
+result.push('- '+(h1||metaDesc||'Aplicación web construida con HTML.'));
+result.push('## ¿Para qué sirve?');
+result.push('- '+(metaDesc||'Ofrece una interfaz interactiva para gestionar contenido, herramientas y utilidades web.'));
+result.push('## Características');
+var features=[];
+// Secciones
+doc.querySelectorAll('h2, h3, h4').forEach(function(sec){
+var text=sec.textContent.trim();
+if(text&&text.length<80)features.push(text);
+});
+// Botones
+doc.querySelectorAll('button').forEach(function(btn){
+var text=btn.textContent.trim();
+if(text&&text.length<60)features.push('Botón: '+text);
+});
+// Inputs
+doc.querySelectorAll('input, select, textarea').forEach(function(inp){
+var ph=inp.getAttribute('placeholder')||inp.getAttribute('id')||'';
+if(ph)features.push('Campo: '+ph);
+});
+// Modales
+doc.querySelectorAll('.modal, [class*="modal"]').forEach(function(m){
+var id=m.getAttribute('id')||'modal';
+var t=m.querySelector('.modal-title, h3, h4');
+var titulo=t?t.textContent.trim():'Modal';
+if(titulo.length<60)features.push('Modal: '+titulo);
+});
+// Menús desplegables
+doc.querySelectorAll('select').forEach(function(sel){
+var id=sel.getAttribute('id')||'select';
+features.push('Selector: '+id);
+});
+// Eliminar duplicados
+var unicos=[];
+features.forEach(function(f){
+if(unicos.indexOf(f)===-1&&unicos.length<20)unicos.push(f);
+});
+if(unicos.length>0){
+unicos.forEach(function(f){
+var limpio=f.replace(/^Botón: /,'').replace(/^Modal: /,'').replace(/^Campo: /,'').replace(/^Selector: /,'');
+result.push('### '+limpio);
+result.push('#### Detalles');
+if(f.indexOf('Botón')===0)result.push('- Elemento interactivo que ejecuta una acción al hacer clic.');
+else if(f.indexOf('Modal')===0)result.push('- Ventana emergente con contenido o formulario.');
+else if(f.indexOf('Campo')===0)result.push('- Permite la entrada de datos o configuración.');
+else if(f.indexOf('Selector')===0)result.push('- Menú de opciones para configurar.');
+else result.push('- Sección de la interfaz.');
+result.push('##### Ejemplos');
+if(f.indexOf('Botón')===0)result.push('- Al hacer clic, abre o cierra un modal, exporta un archivo, etc.');
+else if(f.indexOf('Modal')===0)result.push('- El modal se activa mediante un botón o enlace.');
+else if(f.indexOf('Campo')===0)result.push('- El usuario escribe texto o selecciona una opción.');
+else if(f.indexOf('Selector')===0)result.push('- El usuario elige entre varias opciones disponibles.');
+else result.push('- Contenido visual que organiza la información.');
+result.push('###### Conclusión del tema');
+if(f.indexOf('Botón')===0)result.push('- Un botón es el punto de interacción para iniciar una acción.');
+else if(f.indexOf('Modal')===0)result.push('- Un modal permite mostrar información sin salir de la página principal.');
+else if(f.indexOf('Campo')===0)result.push('- Un campo de entrada es esencial para formularios.');
+else if(f.indexOf('Selector')===0)result.push('- Un selector simplifica la elección entre múltiples opciones.');
+else result.push('- Una sección organiza el contenido en bloques lógicos.');
+result.push('####### Fuentes Bibliográficas');
+result.push('- Elemento identificado en el código HTML analizado.');
+});
+}else{
+result.push('### Página estática');
+result.push('#### Detalles');
+result.push('- El documento HTML no contiene elementos interactivos identificables.');
+result.push('##### Ejemplos');
+result.push('- Sin botones, modales o campos detectados.');
+result.push('###### Conclusión del tema');
+result.push('- Probablemente es una página de visualización simple.');
+result.push('####### Fuentes Bibliográficas');
+result.push('- Análisis automático del código HTML proporcionado.');
+}
+return result.join('\n');
+}catch(e){
+return '# Error al procesar HTML\n## ¿Qué es?\n- No se pudo analizar el HTML.\n## ¿Para qué sirve?\n- Revisar la sintaxis del archivo.\n';
+}
+}
+
+// Convierte texto plano a SÚMULA con heurísticas
+function convertirTextoASumula(rawText){
+if(!rawText.trim())return '';
+var texto=rawText.replace(/\r/g,'');
+var lineas=texto.split('\n').map(function(l){return l.trim();}).filter(function(l){return l.length>0;});
+if(lineas.length===0)return '';
+// Título inicial
+var titulo=lineas.shift();
+titulo=titulo.replace(/^\d+\s*[\.\-]?\s*/,'').replace(/\s+/g,' ').trim();
+if(!titulo)titulo='Documento Importado';
+var result=[];
+result.push('# '+titulo);
+result.push('## ¿Qué es?');
+result.push('- Contenido importado automáticamente.');
+result.push('## ¿Para qué sirve?');
+result.push('- Base para estructurar el material pedagógico.');
+result.push('## Características');
+var seccionActual='features';
+function esPalabraClave(linea,palabras){
+var lower=linea.toLowerCase();
+for(var i=0;i<palabras.length;i++){if(lower.indexOf(palabras[i])!==-1)return true;}
+return false;
+}
+lineas.forEach(function(linea){
+var lower=linea.toLowerCase();
+// Detección de capítulos/secciones
+if(esPalabraClave(lower,['capítulo','capitulo','parte ','sección','seccion','unidad','título ','titulo '])){
+var limpio=linea.replace(/^[\d\.\s]+/,'').replace(/^(capítulo|capitulo|parte|sección|seccion|unidad|título|titulo)\s*/i,'').trim();
+result.push('### '+(limpio||linea));
+seccionActual='details';
+result.push('#### Detalles');
+return;
+}
+// Palabras clave de sección
+if(esPalabraClave(lower,['qué es','que es','definición','definicion','introducción','introduccion'])){
+seccionActual='quees';
+result.push('## ¿Qué es?');
+return;
+}
+if(esPalabraClave(lower,['para qué sirve','para que sirve','objetivo','propósito','proposito','finalidad'])){
+seccionActual='paraque';
+result.push('## ¿Para qué sirve?');
+return;
+}
+if(esPalabraClave(lower,['características','caracteristicas','funciones','propiedades'])){
+seccionActual='features';
+result.push('## Características');
+return;
+}
+if(esPalabraClave(lower,['ejemplo','ejemplos','caso práctico','caso practico'])){
+seccionActual='examples';
+result.push('##### Ejemplos');
+return;
+}
+if(esPalabraClave(lower,['conclusión','conclusion','resumen','síntesis','sintesis'])){
+seccionActual='conclusion';
+result.push('###### Conclusión del tema');
+return;
+}
+if(esPalabraClave(lower,['fuente','bibliografía','bibliografia','referencias','citas'])){
+seccionActual='sources';
+result.push('####### Fuentes Bibliográficas');
+return;
+}
+// Contenido normal
+var limpio=linea.replace(/^[-*•]\s*/,'').trim();
+if(!limpio)return;
+if(seccionActual==='quees'||seccionActual==='paraque'){
+result.push('- '+limpio);
+}else if(seccionActual==='features'){
+// Si es corto, es un título; si es largo, es descripción
+if(limpio.length<70&&limpio.indexOf('.')===-1&&limpio.indexOf(',')===-1){
+result.push('### '+limpio);
+seccionActual='details';
+result.push('#### Detalles');
+}else{
+result.push('- '+limpio);
+}
+}else if(seccionActual==='details'||seccionActual==='examples'||seccionActual==='conclusion'||seccionActual==='sources'){
+result.push('- '+limpio);
+}else{
+result.push('- '+limpio);
+}
+});
+return result.join('\n');
+}
+
+// Procesar archivo o texto pegado
+async function procesarImport(){
+var archivo=fileInput.files[0];
+var textoPegado=pasteArea.value.trim();
+// Validar
+if(!archivo&&!textoPegado){alert('Selecciona un archivo o pega texto para procesar.');return;}
+
+// Mostrar progreso
+importForm.style.display='none';
+importProgress.classList.add('show');
+importProgressText.textContent='Leyendo archivo...';
+
+try{
+var textoFinal='';
+var esHTML=false;
+
+if(archivo){
+var ext=archivo.name.split('.').pop().toLowerCase();
+importProgressText.textContent='Procesando '+ext.toUpperCase()+'...';
+
+if(ext==='pdf'){
+if(typeof pdfjsLib==='undefined')throw new Error('PDF.js no está cargado.');
+var arr=await archivo.arrayBuffer();
+var pdf=await pdfjsLib.getDocument({data:arr}).promise;
+var txt='';
+for(var i=1;i<=pdf.numPages;i++){
+importProgressText.textContent='Leyendo PDF página '+i+' de '+pdf.numPages+'...';
+var page=await pdf.getPage(i);
+var tc=await page.getTextContent();
+txt+=tc.items.map(function(x){return x.str;}).join(' ')+'\n';
+}
+textoFinal=txt;
+}else if(ext==='docx'){
+if(typeof mammoth==='undefined')throw new Error('Mammoth.js no está cargado.');
+var arr2=await archivo.arrayBuffer();
+var res=await mammoth.extractRawText({arrayBuffer:arr2});
+textoFinal=res.value;
+}else if(ext==='txt'||ext==='md'){
+textoFinal=await archivo.text();
+}else if(ext==='html'||ext==='htm'){
+textoFinal=await archivo.text();
+esHTML=true;
+}else{
+throw new Error('Formato no soportado: '+ext);
+}
+}else{
+// Texto pegado
+textoFinal=textoPegado;
+// Detectar si es HTML
+if(/<(!DOCTYPE|html|body|div|script|head|meta|section|article|nav|header|footer)[\s>]/i.test(textoFinal)){
+esHTML=true;
+}
+}
+
+importProgressText.textContent='Convirtiendo a SÚMULA...';
+
+var sumulaText='';
+if(esHTML){
+sumulaText=convertirHtmlASumula(textoFinal);
+}else{
+sumulaText=convertirTextoASumula(textoFinal);
+}
+
+// Aplicar al editor
+if(estadoReproductor!=='detenido')detenerLectura();
+textarea.value=sumulaText;
+seleccionados.clear();
+localStorage.setItem('nexus_contenido',sumulaText);
+generarMapa();
+
+// Cerrar modal
+setTimeout(function(){
+cerrarImport();
+importForm.style.display='block';
+importProgress.classList.remove('show');
+voiceStatus.textContent='✅ Importación completada';
+},400);
+
+}catch(err){
+console.error('Error importación:',err);
+importForm.style.display='block';
+importProgress.classList.remove('show');
+alert('❌ Error al procesar el archivo:\n\n'+err.message);
+}
+}
+
+btnProcessImport.addEventListener('click',procesarImport);
+
+// ==========================================================
+// EVENTOS GLOBALES
+// ==========================================================
 textarea.addEventListener('input',function(){
 if(estadoReproductor!=='detenido')detenerLectura();
 localStorage.setItem('nexus_contenido',textarea.value);
@@ -649,11 +932,12 @@ document.body.classList.toggle('dark-theme');
 document.body.classList.toggle('dark');
 if(!document.getElementById('darkStyle')){
 var style=document.createElement('style');style.id='darkStyle';
-style.textContent='body.dark-theme{background:#1e1e2e;color:#e0e0e0}body.dark-theme .panel{background:#2a2a3c;color:#e0e0e0}body.dark-theme textarea{background:#2a2a3c;color:#e0e0e0}body.dark-theme .node{background:#333;color:#fff}body.dark-theme .node:hover{background:#444}body.dark-theme .voice-panel{background:#2a2a3c;border-color:#3a3a4c}body.dark-theme .voice-panel select{background:#333;color:#fff;border-color:#555}body.dark-theme .voice-status{color:#aaa}body.dark-theme .timer-display{background:#333;color:#fff;border-color:#555}body.dark-theme .timer-estimado{color:#aaa}body.dark-theme .dropdown-menu{background:#2a2a3c;border-color:#3a3a4c}body.dark-theme .dropdown-item{color:#e0e0e0}body.dark-theme .dropdown-item:hover{background:#35355a}body.dark-theme .selection-info{color:#6ab0ff}';
+style.textContent='body.dark-theme{background:#1e1e2e;color:#e0e0e0}body.dark-theme .panel{background:#2a2a3c;color:#e0e0e0}body.dark-theme textarea{background:#2a2a3c;color:#e0e0e0}body.dark-theme .node{background:#333;color:#fff}body.dark-theme .node:hover{background:#444}body.dark-theme .voice-panel{background:#2a2a3c;border-color:#3a3a4c}body.dark-theme .voice-panel select{background:#333;color:#fff;border-color:#555}body.dark-theme .voice-status{color:#aaa}body.dark-theme .timer-display{background:#333;color:#fff;border-color:#555}body.dark-theme .timer-estimado{color:#aaa}body.dark-theme .dropdown-menu{background:#2a2a3c;border-color:#3a3a4c}body.dark-theme .dropdown-item{color:#e0e0e0}body.dark-theme .dropdown-item:hover{background:#35355a}body.dark-theme .selection-info{color:#6ab0ff}body.dark-theme .modal-content{background:#2a2a3c;color:#e0e0e0}body.dark-theme .file-drop{background:#333;border-color:#6ab0ff}body.dark-theme .file-drop p{color:#ccc}body.dark-theme .file-drop strong{color:#6ab0ff}body.dark-theme #pasteArea{background:#333;color:#fff;border-color:#555}';
 document.head.appendChild(style);
 }
 });
 
+// FORJA
 var dropdownBtn=document.getElementById('dropdownBtn');
 var dropdownMenu=document.getElementById('dropdownMenu');
 dropdownBtn.addEventListener('click',function(e){e.stopPropagation();dropdownMenu.classList.toggle('show');});
