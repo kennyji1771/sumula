@@ -302,10 +302,10 @@ if(estadoReproductor!=='leyendo')return;
 onDone();
 };
 u.onerror=function(e){
-if(miGeneracion!==generacion)return;
-// ✅ Ignorar 'interrupted' y 'canceled' — son normales al cancelar
+// ✅ Ignorar SIEMPRE interrupted/canceled ANTES de cualquier otra verificación
 var err=e.error||'';
 if(err==='interrupted'||err==='canceled')return;
+if(miGeneracion!==generacion)return;
 console.warn('Voz error:',err);
 if(estadoReproductor==='leyendo'){
 setTimeout(function(){
