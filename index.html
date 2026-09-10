@@ -36,6 +36,9 @@ textarea{width:100%;height:100%;border:none;outline:none;font-family:'Consolas',
 .btn-clear{background:#95a5a6;color:white;font-size:12px;padding:6px 10px}.btn-clear:hover{background:#7f8c8d}
 .btn-karaoke{background:#3498db;color:white}.btn-karaoke:hover{background:#2980b9}
 .btn-karaoke.active{background:#2980b9;box-shadow:inset 0 0 0 3px #fff}
+.btn-rec{background:#e74c3c;color:white}.btn-rec:hover{background:#c0392b}
+.btn-rec.recording{background:#c0392b;animation:pulse 1s infinite}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(231,76,60,0.7)}50%{box-shadow:0 0 0 8px rgba(231,76,60,0)}}
 .voice-panel select{padding:5px 10px;border-radius:8px;border:1px solid #ccc;font-size:13px;color:#333;background:white;max-width:180px}
 .timer-display{font-family:'Consolas',monospace;font-weight:bold;font-size:16px;color:#2c3e6b;background:white;padding:4px 10px;border-radius:8px;border:1px solid #e0e6ed;min-width:60px;text-align:center}
 .timer-estimado{font-size:11px;color:#888}
@@ -47,7 +50,6 @@ textarea{width:100%;height:100%;border:none;outline:none;font-family:'Consolas',
 .dropdown-item{display:block;padding:8px 16px;color:#333;text-decoration:none;cursor:pointer;font-size:14px;white-space:nowrap}
 .dropdown-item:hover{background:#f0f5fa}
 .dropdown-item i{margin-right:8px;color:#666}
-/* KARAOKE MODAL */
 #karaokeModal{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:#ffffff;z-index:5000;flex-direction:column}
 #karaokeModal.show{display:flex}
 #karaokeHeader{background:linear-gradient(135deg,#1a2a4a,#2c3e6b);color:white;padding:12px 20px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px}
@@ -89,6 +91,8 @@ body.dark #karaokeBody .karaoke-word.highlight-word{background:#b8860b;color:#ff
 <button class="btn-stop" id="btnStop">⏹</button>
 <button class="btn-loop" id="btnLoop" title="Repetir en bucle">🔂</button>
 <button class="btn-karaoke" id="btnKaraoke" title="Modo lectura asistida">📖</button>
+<!-- MÓDULO 7 · CAPTURA -->
+<button class="btn-rec" id="btnRec" title="Grabar audio de la pestaña">⏺</button>
 <button class="btn-clear" id="btnClear" title="Limpiar selección">✕ Limpiar</button>
 <select id="voiceSelect"></select>
 <span class="timer-display" id="timerDisplay">00:00</span>
@@ -101,7 +105,6 @@ body.dark #karaokeBody .karaoke-word.highlight-word{background:#b8860b;color:#ff
 </div>
 </div>
 
-<!-- MÓDULO 6 · KARAOKE -->
 <div id="karaokeModal">
 <div id="karaokeHeader">
 <h3 id="karaokeTitle">📖 Lectura Asistida</h3>
@@ -117,24 +120,18 @@ body.dark #karaokeBody .karaoke-word.highlight-word{background:#b8860b;color:#ff
 
 <script>
 (function(){
-// NÚCLEO SÚMULA
 var textarea=document.getElementById('contenido');
 var mapaDiv=document.getElementById('mapa');
-// VOZ ESMERALDA
 var btnPlay=document.getElementById('btnPlay');
 var btnPause=document.getElementById('btnPause');
 var btnStop=document.getElementById('btnStop');
 var voiceSelect=document.getElementById('voiceSelect');
 var voiceStatus=document.getElementById('voiceStatus');
-// CRONOS
 var timerDisplay=document.getElementById('timerDisplay');
 var timerEstimado=document.getElementById('timerEstimado');
-// ELEGÍA
 var btnLoop=document.getElementById('btnLoop');
-// CRIBA
 var btnClear=document.getElementById('btnClear');
 var selectionInfo=document.getElementById('selectionInfo');
-// KARAOKE
 var btnKaraoke=document.getElementById('btnKaraoke');
 var karaokeModal=document.getElementById('karaokeModal');
 var karaokeBody=document.getElementById('karaokeBody');
@@ -143,6 +140,8 @@ var kPlay=document.getElementById('kPlay');
 var kPause=document.getElementById('kPause');
 var kStop=document.getElementById('kStop');
 var kClose=document.getElementById('kClose');
+// MÓDULO 7
+var btnRec=document.getElementById('btnRec');
 
 var synth=window.speechSynthesis;
 var utterance=null;
@@ -157,16 +156,18 @@ var estadoReproductor='detenido';
 var vocesCargadas=[];
 var generacion=0;
 var seleccionados=new Set();
-// ✅ MÓDULO 6: Estado del karaoke
 var karaokeActivo=false;
 var karaokeWords=[];
 var karaokePositions=[];
 var karaokeCurrentIdx=-1;
+// MÓDULO 7: Variables de grabación
+var mediaRecorder=null;
+var audioChunks=[];
+var grabando=false;
 
 var ejemplo="# Acelerador de Conocimiento\n## ¿Qué es?\n- Herramienta para estructurar ideas jerárquicamente.\n## ¿Para qué sirve?\n- Planificar cursos, proyectos.\n## Características\n### Edición en tiempo real\n### Interactividad";
 textarea.value=localStorage.getItem('nexus_contenido')||ejemplo;
 
-// PARSER
 function parsear(texto){
 var lineas=texto.split('\n');var nodos=[];var pila=[];var id=1;var tieneMarkdown=false;
 for(var k=0;k<lineas.length;k++){var l=lineas[k].trim();if(l.indexOf('# ')===0||l.indexOf('## ')===0||l.indexOf('### ')===0||l.indexOf('- ')===0||l.indexOf('* ')===0){tieneMarkdown=true;break;}}
@@ -199,10 +200,8 @@ hijos.forEach(rec);
 rec(id);
 return partes;
 }
-
 function estaSeleccionado(etiqueta){return seleccionados.has(etiqueta);}
 
-// RENDERIZADOR
 function generarMapa(){
 var resultado=parsear(textarea.value);
 var nodosMap=new Map(resultado.nodos.map(function(n){return[n.id,n];}));
@@ -214,8 +213,7 @@ var nodo=nodosMap.get(id);if(!nodo)return null;
 var hijos=hijosMap.get(id)||[];
 var card=document.createElement('div');card.className='node';
 var chk=document.createElement('input');
-chk.type='checkbox';
-chk.checked=estaSeleccionado(nodo.etiqueta);
+chk.type='checkbox';chk.checked=estaSeleccionado(nodo.etiqueta);
 chk.title='Seleccionar para reproducir solo este segmento';
 chk.onclick=function(e){e.stopPropagation();};
 chk.onchange=function(e){e.stopPropagation();if(chk.checked)seleccionados.add(nodo.etiqueta);else seleccionados.delete(nodo.etiqueta);actualizarInfoSeleccion();calcularEstimacion();};
@@ -239,12 +237,9 @@ function actualizarInfoSeleccion(){
 if(seleccionados.size===0)selectionInfo.textContent='';
 else selectionInfo.textContent='☑ '+seleccionados.size+' seleccionado'+(seleccionados.size>1?'s':'');
 }
-
 function limpiarTexto(t){
 return t.replace(/^#{1,6}\s*/gm,'').replace(/^[-*+]\s*/gm,'').replace(/^>\s?/gm,'').replace(/\*\*/g,'').replace(/__/g,'').replace(/\*/g,'').replace(/_/g,'').replace(/~~/g,'').replace(/`/g,'').replace(/\[([^\]]*)\]\([^)]*\)/g,'$1').replace(/!\[([^\]]*)\]\([^)]*\)/g,'$1').replace(/\n+/g,'. ').replace(/\s{2,}/g,' ').trim();
 }
-
-// VOCES
 function obtenerVocesEspanol(){
 var voces=synth.getVoices();var es=[];
 for(var i=0;i<voces.length;i++){if(voces[i].lang.toLowerCase().indexOf('es')===0)es.push(voces[i]);}
@@ -270,28 +265,13 @@ vocesCargadas=obtenerVocesEspanol();
 if(vocesCargadas.length===0)return false;
 var idx=parseInt(voiceSelect.value);
 if(isNaN(idx)||idx<0||idx>=vocesCargadas.length)idx=0;
-u.voice=vocesCargadas[idx];
-u.lang='es-ES';
-return true;
+u.voice=vocesCargadas[idx];u.lang='es-ES';return true;
 }
 
-// CRONOS
 function formatearTiempo(s){var m=Math.floor(s/60);var g=s%60;return(m<10?'0':'')+m+':'+(g<10?'0':'')+g;}
-function iniciarCronometro(){
-if(cronoInterval)return;
-cronoInicioTramo=Date.now();
-cronoInterval=setInterval(function(){var t=Math.floor((Date.now()-cronoInicioTramo)/1000);timerDisplay.textContent=formatearTiempo(cronoSegundos+t);},250);
-}
-function pausarCronometro(){
-if(!cronoInterval)return;
-var t=Math.floor((Date.now()-cronoInicioTramo)/1000);
-cronoSegundos+=t;clearInterval(cronoInterval);cronoInterval=null;
-timerDisplay.textContent=formatearTiempo(cronoSegundos);
-}
-function resetearCronometro(){
-if(cronoInterval){clearInterval(cronoInterval);cronoInterval=null;}
-cronoSegundos=0;cronoInicioTramo=0;timerDisplay.textContent='00:00';
-}
+function iniciarCronometro(){if(cronoInterval)return;cronoInicioTramo=Date.now();cronoInterval=setInterval(function(){var t=Math.floor((Date.now()-cronoInicioTramo)/1000);timerDisplay.textContent=formatearTiempo(cronoSegundos+t);},250);}
+function pausarCronometro(){if(!cronoInterval)return;var t=Math.floor((Date.now()-cronoInicioTramo)/1000);cronoSegundos+=t;clearInterval(cronoInterval);cronoInterval=null;timerDisplay.textContent=formatearTiempo(cronoSegundos);}
+function resetearCronometro(){if(cronoInterval){clearInterval(cronoInterval);cronoInterval=null;}cronoSegundos=0;cronoInicioTramo=0;timerDisplay.textContent='00:00';}
 function calcularEstimacion(){
 var lista=prepararLista();
 var limpio=limpiarTexto(lista.join(' '));
@@ -301,7 +281,6 @@ var segundosTotales=Math.round((palabras/(175*0.9))*60);
 var min=Math.floor(segundosTotales/60);var seg=segundosTotales%60;
 timerEstimado.textContent='~'+min+'m '+(seg<10?'0':'')+seg+'s ('+palabras+' pal.)';
 }
-
 function prepararLista(){
 var resultado=parsear(textarea.value);
 var lista=[];
@@ -326,29 +305,17 @@ resultado.raices.forEach(function(r){recorrer(r.id);});
 return lista;
 }
 
-// ✅ MÓDULO 6: KARAOKE - Preparar palabras en el modal
 function prepararKaraoke(textoOriginal){
 karaokeBody.innerHTML='';
 karaokeWords=[];karaokePositions=[];karaokeCurrentIdx=-1;
 var limpio=limpiarTexto(textoOriginal);
 if(!limpio){karaokeBody.textContent='(Sin texto)';return;}
-// Título del nodo
-var title=document.createElement('div');
-title.className='karaoke-node-title';
-title.textContent='▶ '+textoOriginal;
-karaokeBody.appendChild(title);
-// Contenedor de palabras
+var title=document.createElement('div');title.className='karaoke-node-title';title.textContent='▶ '+textoOriginal;karaokeBody.appendChild(title);
 var container=document.createElement('div');
-var palabras=limpio.split(/\s+/);
-var pos=0;
+var palabras=limpio.split(/\s+/);var pos=0;
 for(var i=0;i<palabras.length;i++){
-var w=palabras[i];
-if(!w){pos++;continue;}
-var span=document.createElement('span');
-span.textContent=w;
-span.className='karaoke-word';
-span.dataset.idx=i;
-container.appendChild(span);
+var w=palabras[i];if(!w){pos++;continue;}
+var span=document.createElement('span');span.textContent=w;span.className='karaoke-word';span.dataset.idx=i;container.appendChild(span);
 karaokePositions.push({start:pos,end:pos+w.length,idx:i});
 pos+=w.length+1;
 container.appendChild(document.createTextNode(' '));
@@ -356,7 +323,6 @@ karaokeWords.push(span);
 }
 karaokeBody.appendChild(container);
 }
-// ✅ MÓDULO 6: Resaltar palabra actual
 function resaltarPalabra(charIndex){
 if(!karaokeActivo)return;
 if(karaokePositions.length===0)return;
@@ -373,35 +339,19 @@ return;
 }
 }
 }
-function resaltarNodoCompleto(){
-// Fallback para Firefox: resalta todas las palabras
-for(var i=0;i<karaokeWords.length;i++)karaokeWords[i].classList.add('highlight-word');
-}
-function limpiarResaltado(){
-for(var i=0;i<karaokeWords.length;i++)karaokeWords[i].classList.remove('highlight-word');
-karaokeCurrentIdx=-1;
-}
 
-// ✅ LIMPIAR SYNTH
 function limpiarSynth(){
 generacion++;
 try{
-if(utterance){
-utterance.onend=null;utterance.onerror=null;utterance.onstart=null;utterance.onboundary=null;
-}
+if(utterance){utterance.onend=null;utterance.onerror=null;utterance.onstart=null;utterance.onboundary=null;}
 if(synth.paused)synth.resume();
 synth.cancel();
 }catch(e){}
 }
 
-// HABLAR
 function hablar(texto,onDone){
 if(vocesCargadas.length===0)vocesCargadas=obtenerVocesEspanol();
-if(vocesCargadas.length===0){
-voiceStatus.textContent='⚠️ Cargando voces...';
-setTimeout(function(){hablar(texto,onDone);},400);
-return;
-}
+if(vocesCargadas.length===0){voiceStatus.textContent='⚠️ Cargando voces...';setTimeout(function(){hablar(texto,onDone);},400);return;}
 limpiarSynth();
 var miGeneracion=generacion;
 setTimeout(function(){
@@ -411,19 +361,10 @@ try{
 var u=new SpeechSynthesisUtterance(texto);
 if(!asignarVoz(u)){voiceStatus.textContent='⚠️ Sin voz';onDone();return;}
 u.rate=0.9;u.pitch=1;u.volume=1;
-// ✅ MÓDULO 6: onboundary para karaoke
 u.onboundary=function(ev){
 if(!karaokeActivo)return;
 if(miGeneracion!==generacion)return;
-if(ev.name==='word'||ev.name==='sentence'){
-resaltarPalabra(ev.charIndex);
-}
-};
-u.onstart=function(){
-// Fallback para Firefox (sin onboundary confiable)
-if(karaokeActivo&&navigator.userAgent.indexOf('Firefox')!==-1){
-setTimeout(function(){if(karaokeActivo&&miGeneracion===generacion)resaltarNodoCompleto();},300);
-}
+if(ev.name==='word'||ev.name==='sentence')resaltarPalabra(ev.charIndex);
 };
 u.onend=function(){
 if(miGeneracion!==generacion)return;
@@ -436,37 +377,23 @@ if(err==='interrupted'||err==='canceled')return;
 if(miGeneracion!==generacion)return;
 console.warn('Voz error:',err);
 if(estadoReproductor==='leyendo'){
-setTimeout(function(){
-if(estadoReproductor==='leyendo'&&miGeneracion===generacion)onDone();
-},200);
+setTimeout(function(){if(estadoReproductor==='leyendo'&&miGeneracion===generacion)onDone();},200);
 }
 };
 utterance=u;
 synth.speak(u);
-}catch(e){
-console.error('Error al hablar:',e);
-if(miGeneracion===generacion)onDone();
-}
+}catch(e){console.error('Error al hablar:',e);if(miGeneracion===generacion)onDone();}
 },200);
 }
 
-// LEER SIGUIENTE
 function leerSiguiente(){
 if(bloqueado)return;
 if(estadoReproductor!=='leyendo')return;
 if(indiceActual>=listaNodos.length){
-if(bucleActivo){
-indiceActual=0;
-voiceStatus.textContent='🔂 Bucle reiniciando...';
-setTimeout(leerSiguiente,500);
-return;
-}
+if(bucleActivo){indiceActual=0;voiceStatus.textContent='🔂 Bucle reiniciando...';setTimeout(leerSiguiente,500);return;}
 estadoReproductor='detenido';
 voiceStatus.textContent='Lectura finalizada';
-btnPlay.textContent='▶';
-btnPause.style.display='none';
-indiceActual=0;
-pausarCronometro();
+btnPlay.textContent='▶';btnPause.style.display='none';indiceActual=0;pausarCronometro();
 return;
 }
 var texto=listaNodos[indiceActual];
@@ -474,18 +401,12 @@ var textoLimpio=limpiarTexto(texto);
 if(!textoLimpio){indiceActual++;leerSiguiente();return;}
 var prefijo=bucleActivo?'🔂 ':'🔊 ';
 var selInfo=seleccionados.size>0?' [CRIBA]':'';
-voiceStatus.textContent=prefijo+'Leyendo ('+(indiceActual+1)+'/'+listaNodos.length+')'+selInfo;
-// ✅ MÓDULO 6: Si el karaoke está activo, actualizar su contenido
-if(karaokeActivo){
-prepararKaraoke(texto);
-}
-hablar(textoLimpio,function(){
-indiceActual++;
-leerSiguiente();
-});
+var recInfo=grabando?' ⏺ REC':'';
+voiceStatus.textContent=prefijo+'Leyendo ('+(indiceActual+1)+'/'+listaNodos.length+')'+selInfo+recInfo;
+if(karaokeActivo)prepararKaraoke(texto);
+hablar(textoLimpio,function(){indiceActual++;leerSiguiente();});
 }
 
-// DETENER
 function detenerLectura(){
 bloqueado=true;
 estadoReproductor='detenido';
@@ -497,110 +418,139 @@ resetearCronometro();
 setTimeout(function(){bloqueado=false;},250);
 }
 
-// PLAY
 btnPlay.addEventListener('click',function(){
 if(estadoReproductor==='leyendo'){
-estadoReproductor='pausado';
-limpiarSynth();
-btnPlay.textContent='▶';
-btnPause.style.display='inline-block';
-voiceStatus.textContent='⏸ Pausado en nodo '+(indiceActual+1);
-pausarCronometro();
+estadoReproductor='pausado';limpiarSynth();
+btnPlay.textContent='▶';btnPause.style.display='inline-block';
+voiceStatus.textContent='⏸ Pausado en nodo '+(indiceActual+1);pausarCronometro();
 return;
 }
 if(estadoReproductor==='pausado'){
-estadoReproductor='leyendo';
-btnPlay.textContent='⏸';
-btnPause.style.display='none';
-voiceStatus.textContent='🔊 Reanudando...';
-iniciarCronometro();
-setTimeout(function(){leerSiguiente();},250);
-return;
+estadoReproductor='leyendo';btnPlay.textContent='⏸';btnPause.style.display='none';
+voiceStatus.textContent='🔊 Reanudando...';iniciarCronometro();
+setTimeout(function(){leerSiguiente();},250);return;
 }
-bloqueado=false;
-listaNodos=prepararLista();
+bloqueado=false;listaNodos=prepararLista();
 if(listaNodos.length===0){voiceStatus.textContent='No hay contenido';return;}
-indiceActual=0;
-resetearCronometro();
-iniciarCronometro();
-estadoReproductor='leyendo';
+indiceActual=0;resetearCronometro();iniciarCronometro();estadoReproductor='leyendo';
 var selInfo=seleccionados.size>0?' (CRIBA: '+seleccionados.size+' nodos)':'';
 voiceStatus.textContent='🔊 Iniciando...'+selInfo;
-btnPlay.textContent='⏸';
-btnPause.style.display='none';
+btnPlay.textContent='⏸';btnPause.style.display='none';
 setTimeout(function(){leerSiguiente();},250);
 });
-
 btnPause.addEventListener('click',function(){
 if(estadoReproductor==='leyendo'){
-estadoReproductor='pausado';
-limpiarSynth();
-btnPlay.textContent='▶';
-btnPause.style.display='none';
-voiceStatus.textContent='⏸ Pausado en nodo '+(indiceActual+1);
-pausarCronometro();
+estadoReproductor='pausado';limpiarSynth();
+btnPlay.textContent='▶';btnPause.style.display='none';
+voiceStatus.textContent='⏸ Pausado en nodo '+(indiceActual+1);pausarCronometro();
 }
 });
+btnStop.addEventListener('click',function(){detenerLectura();voiceStatus.textContent='⏹ Detenido';});
+btnLoop.addEventListener('click',function(){bucleActivo=!bucleActivo;btnLoop.classList.toggle('active',bucleActivo);voiceStatus.textContent=bucleActivo?'🔂 Bucle ACTIVADO':'🔂 Bucle desactivado';});
+btnClear.addEventListener('click',function(){seleccionados.clear();actualizarInfoSeleccion();generarMapa();voiceStatus.textContent='✕ Selección limpiada';});
 
-btnStop.addEventListener('click',function(){
-detenerLectura();
-voiceStatus.textContent='⏹ Detenido';
-});
-
-btnLoop.addEventListener('click',function(){
-bucleActivo=!bucleActivo;
-btnLoop.classList.toggle('active',bucleActivo);
-voiceStatus.textContent=bucleActivo?'🔂 Bucle ACTIVADO':'🔂 Bucle desactivado';
-});
-
-btnClear.addEventListener('click',function(){
-seleccionados.clear();
-actualizarInfoSeleccion();
-generarMapa();
-voiceStatus.textContent='✕ Selección limpiada';
-});
-
-// ✅ MÓDULO 6: KARAOKE - Abrir/cerrar modal
 btnKaraoke.addEventListener('click',function(){
-karaokeActivo=!karaokeActivo;
-btnKaraoke.classList.toggle('active',karaokeActivo);
+karaokeActivo=!karaokeActivo;btnKaraoke.classList.toggle('active',karaokeActivo);
 if(karaokeActivo){
 karaokeModal.classList.add('show');
 voiceStatus.textContent='📖 Karaoke ACTIVADO';
-// Si hay texto actual, mostrarlo; si no, mostrar el primero
-if(listaNodos.length>0&&indiceActual<listaNodos.length){
-prepararKaraoke(listaNodos[indiceActual]);
-}else{
-var lista=prepararLista();
-if(lista.length>0)prepararKaraoke(lista[0]);
-else karaokeBody.innerHTML='<div style="text-align:center;color:#999;padding:40px">Sin contenido. Inicia la reproducción.</div>';
-}
-}else{
-karaokeModal.classList.remove('show');
-voiceStatus.textContent='📖 Karaoke desactivado';
-}
+if(listaNodos.length>0&&indiceActual<listaNodos.length)prepararKaraoke(listaNodos[indiceActual]);
+else{var lista=prepararLista();if(lista.length>0)prepararKaraoke(lista[0]);else karaokeBody.innerHTML='<div style="text-align:center;color:#999;padding:40px">Sin contenido. Inicia la reproducción.</div>';}
+}else{karaokeModal.classList.remove('show');voiceStatus.textContent='📖 Karaoke desactivado';}
 });
+kClose.addEventListener('click',function(){karaokeActivo=false;btnKaraoke.classList.remove('active');karaokeModal.classList.remove('show');voiceStatus.textContent='📖 Karaoke cerrado';});
+kPlay.addEventListener('click',function(){btnPlay.click();});
+kPause.addEventListener('click',function(){btnPause.click();});
+kStop.addEventListener('click',function(){btnStop.click();});
 
-kClose.addEventListener('click',function(){
-karaokeActivo=false;
-btnKaraoke.classList.remove('active');
-karaokeModal.classList.remove('show');
-voiceStatus.textContent='📖 Karaoke cerrado';
+// ==========================================================
+// MÓDULO 7 · CAPTURA: Grabación de audio de la pestaña
+// ==========================================================
+async function toggleGrabacion(){
+if(grabando){
+// Detener grabación
+try{mediaRecorder.stop();}catch(e){}
+return;
+}
+// Iniciar grabación
+try{
+if(!navigator.mediaDevices||!navigator.mediaDevices.getDisplayMedia){
+alert('Tu navegador no soporta la grabación de pestaña. Usa Chrome o Edge.');
+return;
+}
+// Pedir permiso para capturar el audio de la pestaña
+var stream=await navigator.mediaDevices.getDisplayMedia({
+audio:true,
+video:false,
+preferCurrentTab:false,
+systemAudio:'include'
 });
-
-// Controles del modal karaoke (delegan a los principales)
-kPlay.addEventListener('click',function(){btnPlay.click();syncKaraokeButtons();});
-kPause.addEventListener('click',function(){btnPause.click();syncKaraokeButtons();});
-kStop.addEventListener('click',function(){btnStop.click();syncKaraokeButtons();});
-function syncKaraokeButtons(){
-if(estadoReproductor==='leyendo'){
-kPlay.textContent='⏸';kPause.style.display='none';
-}else if(estadoReproductor==='pausado'){
-kPlay.textContent='▶';kPause.style.display='none';
-}else{
-kPlay.textContent='▶';kPause.style.display='none';
+// Verificar que tenga pista de audio
+var hasAudio=stream.getAudioTracks().length>0;
+if(!hasAudio){
+voiceStatus.textContent='⚠️ No se capturó audio. Marca "Compartir audio de la pestaña".';
+try{stream.getTracks().forEach(function(t){t.stop();});}catch(e){}
+alert('⚠️ No se detectó audio.\n\nCuando el navegador te pida compartir, asegúrate de:\n1. Seleccionar la PESTAÑA actual\n2. Activar "Compartir audio de la pestaña" (abajo a la izquierda)');
+return;
+}
+audioChunks=[];
+// Elegir el mejor mimeType disponible
+var mimeType='';
+if(typeof MediaRecorder.isTypeSupported==='function'){
+if(MediaRecorder.isTypeSupported('audio/webm;codecs=opus'))mimeType='audio/webm;codecs=opus';
+else if(MediaRecorder.isTypeSupported('audio/webm'))mimeType='audio/webm';
+else if(MediaRecorder.isTypeSupported('audio/mp4'))mimeType='audio/mp4';
+}
+var opts=mimeType?{mimeType:mimeType}:{};
+mediaRecorder=new MediaRecorder(stream,opts);
+mediaRecorder.ondataavailable=function(e){if(e.data&&e.data.size>0)audioChunks.push(e.data);};
+mediaRecorder.onstop=function(){
+var tipo=mediaRecorder.mimeType||'audio/webm';
+var ext=tipo.indexOf('mp4')!==-1?'mp4':'webm';
+var blob=new Blob(audioChunks,{type:tipo});
+var url=URL.createObjectURL(blob);
+var a=document.createElement('a');
+a.href=url;
+var resultado=parsear(textarea.value);
+var titulo=resultado.raices.length>0?resultado.raices[0].etiqueta:'audio';
+a.download=titulo.replace(/[^a-z0-9]/gi,'_').substring(0,40)+'_'+Date.now()+'.'+ext;
+document.body.appendChild(a);a.click();document.body.removeChild(a);
+setTimeout(function(){URL.revokeObjectURL(url);},1000);
+grabando=false;
+btnRec.classList.remove('recording');
+btnRec.textContent='⏺';
+voiceStatus.textContent='⏺ Grabación descargada ('+ext.toUpperCase()+')';
+};
+// Detectar cuando el usuario detiene la captura desde el navegador
+stream.getVideoTracks().forEach(function(t){
+t.onended=function(){
+if(grabando){try{mediaRecorder.stop();}catch(e){}}
+};
+});
+stream.getAudioTracks().forEach(function(t){
+t.onended=function(){
+if(grabando){try{mediaRecorder.stop();}catch(e){}}
+};
+});
+mediaRecorder.start(1000);// Recolectar chunks cada 1s
+grabando=true;
+btnRec.classList.add('recording');
+btnRec.textContent='⏹';
+voiceStatus.textContent='⏺ GRABANDO... (pulsa ⏺ para detener)';
+// Aviso al usuario
+setTimeout(function(){
+if(grabando)voiceStatus.textContent='⏺ Grabando... pulsa ⏺ de nuevo para detener y descargar';
+},2000);
+}catch(e){
+console.error('Error grabación:',e);
+voiceStatus.textContent='⚠️ Grabación cancelada';
+alert('No se pudo iniciar la grabación.\n\nPosibles causas:\n- No autorizaste el permiso de captura\n- No marcaste "Compartir audio de la pestaña"\n- Cancelaste el diálogo\n\nError: '+e.message);
+grabando=false;
+btnRec.classList.remove('recording');
+btnRec.textContent='⏺';
 }
 }
+btnRec.addEventListener('click',toggleGrabacion);
 
 // EVENTOS
 textarea.addEventListener('input',function(){
@@ -654,13 +604,14 @@ html+='.btn-stop{background:#e74c3c;color:white}.btn-stop:hover{background:#c039
 html+='.btn-loop{background:#9b59b6;color:white}.btn-loop:hover{background:#8e44ad}.btn-loop.active{background:#8e44ad;box-shadow:inset 0 0 0 3px #fff}';
 html+='.btn-clear{background:#95a5a6;color:white;font-size:12px;padding:6px 10px}.btn-clear:hover{background:#7f8c8d}';
 html+='.btn-karaoke{background:#3498db;color:white}.btn-karaoke:hover{background:#2980b9}.btn-karaoke.active{background:#2980b9;box-shadow:inset 0 0 0 3px #fff}';
+html+='.btn-rec{background:#e74c3c;color:white}.btn-rec:hover{background:#c0392b}.btn-rec.recording{background:#c0392b;animation:pulse 1s infinite}';
+html+='@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(231,76,60,0.7)}50%{box-shadow:0 0 0 8px rgba(231,76,60,0)}}';
 html+='.btn-light{background:#f8f9fa;color:#333;border:1px solid #ccc}.btn-light:hover{background:#e9ecef}';
 html+='.timer-display{font-family:"Consolas",monospace;font-weight:bold;font-size:16px;color:#2c3e6b;background:white;padding:6px 12px;border-radius:8px;border:1px solid #e0e6ed;min-width:70px;text-align:center}';
 html+='.timer-estimado{font-size:11px;color:#888}.status{font-size:12px;color:#666;margin-left:auto}.selection-info{font-size:11px;color:#3498db;font-weight:bold}';
 html+='select{padding:6px 10px;border-radius:8px;border:1px solid #ccc;font-size:13px;background:white}';
 html+='.node{border-left:5px solid #3498db;padding:10px 14px;margin-bottom:6px;cursor:pointer;background:white;border-radius:6px;font-size:14px;box-shadow:0 1px 3px rgba(0,0,0,0.05);display:flex;align-items:center;gap:8px}';
-html+='.node .node-text{flex:1}';
-html+='.node input[type=checkbox]{margin:0;transform:scale(1.2);cursor:pointer;accent-color:#3498db}';
+html+='.node .node-text{flex:1}.node input[type=checkbox]{margin:0;transform:scale(1.2);cursor:pointer;accent-color:#3498db}';
 html+='.node:hover{background:#f0f5fa}.node.level-0{border-left-color:#e67e22;background:#fef5e7}';
 html+='.node.level-1{border-left-color:#3498db}.node.level-2{border-left-color:#2ecc71}.node.level-3{border-left-color:#9b59b6}.node.level-4{border-left-color:#e74c3c}';
 html+='.children{margin-left:20px;border-left:2px dashed #ddd;padding-left:12px;margin-top:6px}.collapsed{display:none}';
@@ -693,6 +644,7 @@ html+='<button class="btn-pause" id="btnPause" style="display:none">⏸</button>
 html+='<button class="btn-stop" id="btnStop">⏹</button>';
 html+='<button class="btn-loop" id="btnLoop">🔂</button>';
 html+='<button class="btn-karaoke" id="btnKaraoke">📖</button>';
+html+='<button class="btn-rec" id="btnRec" title="Grabar audio de la pestaña">⏺</button>';
 html+='<button class="btn-clear" id="btnClear">✕ Limpiar</button>';
 html+='<select id="voiceSelect"></select>';
 html+='<span class="timer-display" id="timerDisplay">00:00</span>';
@@ -716,7 +668,8 @@ html+='var synth=window.speechSynthesis;';
 html+='var utterance=null,listaNodos=[],indiceActual=0,bloqueado=false,bucleActivo=false,estadoReproductor="detenido";';
 html+='var cronoInterval=null,cronoSegundos=0,cronoInicioTramo=0,vocesCargadas=[],generacion=0,seleccionados=new Set();';
 html+='var karaokeActivo=false,karaokeWords=[],karaokePositions=[],karaokeCurrentIdx=-1;';
-html+='var btnPlay=document.getElementById("btnPlay"),btnPause=document.getElementById("btnPause"),btnStop=document.getElementById("btnStop"),btnLoop=document.getElementById("btnLoop"),btnClear=document.getElementById("btnClear"),btnKaraoke=document.getElementById("btnKaraoke");';
+html+='var mediaRecorder=null,audioChunks=[],grabando=false;';
+html+='var btnPlay=document.getElementById("btnPlay"),btnPause=document.getElementById("btnPause"),btnStop=document.getElementById("btnStop"),btnLoop=document.getElementById("btnLoop"),btnClear=document.getElementById("btnClear"),btnKaraoke=document.getElementById("btnKaraoke"),btnRec=document.getElementById("btnRec");';
 html+='var voiceSelect=document.getElementById("voiceSelect"),statusEl=document.getElementById("status"),timerDisplay=document.getElementById("timerDisplay"),timerEstimado=document.getElementById("timerEstimado"),mapaDiv=document.getElementById("mapa"),selectionInfo=document.getElementById("selectionInfo");';
 html+='var karaokeModal=document.getElementById("karaokeModal"),karaokeBody=document.getElementById("karaokeBody"),kPlay=document.getElementById("kPlay"),kPause=document.getElementById("kPause"),kStop=document.getElementById("kStop"),kClose=document.getElementById("kClose");';
 var parserFn=parsear.toString();html+='var parsear='+parserFn+';';
@@ -738,7 +691,7 @@ html+='function prepararKaraoke(txtOrig){karaokeBody.innerHTML="";karaokeWords=[
 html+='function resaltarPalabra(ci){if(!karaokeActivo)return;if(karaokePositions.length===0)return;for(var i=0;i<karaokePositions.length;i++){var p=karaokePositions[i];if(ci>=p.start&&ci<p.end){if(karaokeCurrentIdx!==i){if(karaokeCurrentIdx>=0&&karaokeWords[karaokeCurrentIdx])karaokeWords[karaokeCurrentIdx].classList.remove("highlight-word");karaokeWords[i].classList.add("highlight-word");karaokeCurrentIdx=i;try{karaokeWords[i].scrollIntoView({block:"center",behavior:"smooth"});}catch(e){}}return;}}}';
 html+='function limpiarSynth(){generacion++;try{if(utterance){utterance.onend=null;utterance.onerror=null;utterance.onstart=null;utterance.onboundary=null;}if(synth.paused)synth.resume();synth.cancel();}catch(e){}}';
 html+='function hablar(texto,onDone){if(vocesCargadas.length===0)vocesCargadas=obtenerVocesEspanol();if(vocesCargadas.length===0){statusEl.textContent="⚠ Cargando voces...";setTimeout(function(){hablar(texto,onDone);},400);return;}limpiarSynth();var miGen=generacion;setTimeout(function(){if(miGen!==generacion)return;if(estadoReproductor!=="leyendo")return;try{var u=new SpeechSynthesisUtterance(texto);if(!asignarVoz(u)){statusEl.textContent="⚠ Sin voz";onDone();return;}u.rate=0.9;u.pitch=1;u.volume=1;u.onboundary=function(ev){if(!karaokeActivo)return;if(miGen!==generacion)return;if(ev.name==="word"||ev.name==="sentence")resaltarPalabra(ev.charIndex);};u.onend=function(){if(miGen!==generacion)return;if(estadoReproductor!=="leyendo")return;onDone();};u.onerror=function(e){var err=e.error||"";if(err==="interrupted"||err==="canceled")return;if(miGen!==generacion)return;console.warn("Voz error:",err);if(estadoReproductor==="leyendo")setTimeout(function(){if(estadoReproductor==="leyendo"&&miGen===generacion)onDone();},200);};utterance=u;synth.speak(u);}catch(e){console.error(e);if(miGen===generacion)onDone();}},200);}';
-html+='function leerSiguiente(){if(bloqueado)return;if(estadoReproductor!=="leyendo")return;if(indiceActual>=listaNodos.length){if(bucleActivo){indiceActual=0;statusEl.textContent="🔂 Bucle reiniciando...";setTimeout(leerSiguiente,500);return;}estadoReproductor="detenido";statusEl.textContent="Lectura finalizada";btnPlay.textContent="▶";btnPause.style.display="none";indiceActual=0;pausarCrono();return;}var texto=listaNodos[indiceActual];var limpio=limpiarTexto(texto);if(!limpio){indiceActual++;leerSiguiente();return;}var p=bucleActivo?"🔂 ":"🔊 ";var si=seleccionados.size>0?" [CRIBA]":"";statusEl.textContent=p+"Leyendo ("+(indiceActual+1)+"/"+listaNodos.length+")"+si;if(karaokeActivo)prepararKaraoke(texto);hablar(limpio,function(){indiceActual++;leerSiguiente();});}';
+html+='function leerSiguiente(){if(bloqueado)return;if(estadoReproductor!=="leyendo")return;if(indiceActual>=listaNodos.length){if(bucleActivo){indiceActual=0;statusEl.textContent="🔂 Bucle reiniciando...";setTimeout(leerSiguiente,500);return;}estadoReproductor="detenido";statusEl.textContent="Lectura finalizada";btnPlay.textContent="▶";btnPause.style.display="none";indiceActual=0;pausarCrono();return;}var texto=listaNodos[indiceActual];var limpio=limpiarTexto(texto);if(!limpio){indiceActual++;leerSiguiente();return;}var p=bucleActivo?"🔂 ":"🔊 ";var si=seleccionados.size>0?" [CRIBA]":"";var ri=grabando?" ⏺ REC":"";statusEl.textContent=p+"Leyendo ("+(indiceActual+1)+"/"+listaNodos.length+")"+si+ri;if(karaokeActivo)prepararKaraoke(texto);hablar(limpio,function(){indiceActual++;leerSiguiente();});}';
 html+='btnPlay.onclick=function(){if(estadoReproductor==="leyendo"){estadoReproductor="pausado";limpiarSynth();btnPlay.textContent="▶";btnPause.style.display="inline-block";statusEl.textContent="⏸ Pausado";pausarCrono();return;}if(estadoReproductor==="pausado"){estadoReproductor="leyendo";btnPlay.textContent="⏸";btnPause.style.display="none";statusEl.textContent="🔊 Reanudando...";iniciarCrono();setTimeout(function(){leerSiguiente();},250);return;}bloqueado=false;listaNodos=prepararLista();if(!listaNodos.length){statusEl.textContent="Sin contenido";return;}indiceActual=0;resetCrono();iniciarCrono();estadoReproductor="leyendo";var si=seleccionados.size>0?" (CRIBA: "+seleccionados.size+" nodos)":"";statusEl.textContent="🔊 Iniciando..."+si;btnPlay.textContent="⏸";btnPause.style.display="none";setTimeout(function(){leerSiguiente();},250);};';
 html+='btnPause.onclick=function(){if(estadoReproductor==="leyendo"){estadoReproductor="pausado";limpiarSynth();btnPlay.textContent="▶";btnPause.style.display="none";statusEl.textContent="⏸ Pausado";pausarCrono();}};';
 html+='btnStop.onclick=function(){bloqueado=true;estadoReproductor="detenido";limpiarSynth();utterance=null;indiceActual=0;listaNodos=[];btnPlay.textContent="▶";btnPause.style.display="none";statusEl.textContent="Detenido";resetCrono();setTimeout(function(){bloqueado=false;},250);};';
@@ -747,6 +700,9 @@ html+='btnClear.onclick=function(){seleccionados.clear();actualizarInfoSeleccion
 html+='btnKaraoke.onclick=function(){karaokeActivo=!karaokeActivo;btnKaraoke.classList.toggle("active",karaokeActivo);if(karaokeActivo){karaokeModal.classList.add("show");statusEl.textContent="📖 Karaoke ACTIVADO";if(listaNodos.length>0&&indiceActual<listaNodos.length)prepararKaraoke(listaNodos[indiceActual]);else{var lista=prepararLista();if(lista.length>0)prepararKaraoke(lista[0]);else karaokeBody.innerHTML="<div style=\\"text-align:center;color:#999;padding:40px\\">Sin contenido</div>";}}else{karaokeModal.classList.remove("show");statusEl.textContent="📖 Karaoke desactivado";}};';
 html+='kClose.onclick=function(){karaokeActivo=false;btnKaraoke.classList.remove("active");karaokeModal.classList.remove("show");statusEl.textContent="📖 Karaoke cerrado";};';
 html+='kPlay.onclick=function(){btnPlay.click();};kPause.onclick=function(){btnPause.click();};kStop.onclick=function(){btnStop.click();};';
+// MÓDULO 7 en exportado
+html+='async function toggleGrabacion(){if(grabando){try{mediaRecorder.stop();}catch(e){}return;}try{if(!navigator.mediaDevices||!navigator.mediaDevices.getDisplayMedia){alert("Tu navegador no soporta la grabación. Usa Chrome o Edge.");return;}var stream=await navigator.mediaDevices.getDisplayMedia({audio:true,video:false,systemAudio:"include"});var hasAudio=stream.getAudioTracks().length>0;if(!hasAudio){statusEl.textContent="⚠ No se capturó audio";try{stream.getTracks().forEach(function(t){t.stop();});}catch(e){}alert("No se detectó audio. Marca Compartir audio de la pestaña.");return;}audioChunks=[];var mimeType="";if(typeof MediaRecorder.isTypeSupported==="function"){if(MediaRecorder.isTypeSupported("audio/webm;codecs=opus"))mimeType="audio/webm;codecs=opus";else if(MediaRecorder.isTypeSupported("audio/webm"))mimeType="audio/webm";else if(MediaRecorder.isTypeSupported("audio/mp4"))mimeType="audio/mp4";}var opts=mimeType?{mimeType:mimeType}:{};mediaRecorder=new MediaRecorder(stream,opts);mediaRecorder.ondataavailable=function(e){if(e.data&&e.data.size>0)audioChunks.push(e.data);};mediaRecorder.onstop=function(){var tipo=mediaRecorder.mimeType||"audio/webm";var ext=tipo.indexOf("mp4")!==-1?"mp4":"webm";var blob=new Blob(audioChunks,{type:tipo});var url=URL.createObjectURL(blob);var a=document.createElement("a");a.href=url;a.download="audio_"+Date.now()+"."+ext;document.body.appendChild(a);a.click();document.body.removeChild(a);setTimeout(function(){URL.revokeObjectURL(url);},1000);grabando=false;btnRec.classList.remove("recording");btnRec.textContent="⏺";statusEl.textContent="⏺ Grabación descargada";};stream.getVideoTracks().forEach(function(t){t.onended=function(){if(grabando){try{mediaRecorder.stop();}catch(e){}}}});stream.getAudioTracks().forEach(function(t){t.onended=function(){if(grabando){try{mediaRecorder.stop();}catch(e){}}}});mediaRecorder.start(1000);grabando=true;btnRec.classList.add("recording");btnRec.textContent="⏹";statusEl.textContent="⏺ GRABANDO...";setTimeout(function(){if(grabando)statusEl.textContent="⏺ Grabando... pulsa ⏺ para detener";},2000);}catch(e){console.error(e);statusEl.textContent="⚠ Grabación cancelada";alert("No se pudo grabar: "+e.message);grabando=false;btnRec.classList.remove("recording");btnRec.textContent="⏺";}}';
+html+='btnRec.onclick=toggleGrabacion;';
 html+='document.getElementById("btnExpandir").onclick=function(){document.querySelectorAll(".children").forEach(function(c){c.classList.remove("collapsed");});document.querySelectorAll(".icon").forEach(function(i){i.textContent="▼";});};';
 html+='document.getElementById("btnColapsar").onclick=function(){document.querySelectorAll(".children").forEach(function(c){c.classList.add("collapsed");});document.querySelectorAll(".icon").forEach(function(i){i.textContent="▶";});};';
 html+='document.getElementById("btnTheme").onclick=function(){document.body.classList.toggle("dark");this.textContent=document.body.classList.contains("dark")?"☀ Claro":"🌙 Modo Oscuro";};';
