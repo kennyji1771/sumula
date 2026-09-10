@@ -3,237 +3,59 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Nexus Acelerador · Centro de Conocimiento</title>
+    <title>Nexus Acelerador</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
     <style>
-        :root { --bg: #f4f7fc; --surface: #ffffff; --text: #212529; --text-secondary: #6c757d; --header-bg: linear-gradient(135deg, #1a2a4a, #2c3e6b); --header-text: white; --border-light: #dee2e6; --editor-bg: #ffffff; --nodo-bg: white; --nodo-hover-bg: #f8faff; --scrollbar-thumb: #c1c9d2; --modal-overlay: rgba(0,0,0,0.5); --level-0-bg: #fef5e7; --level-0-border: #e67e22; --level-1-border: #3498db; --level-2-border: #2ecc71; --level-3-border: #9b59b6; --level-4-border: #e74c3c; --highlight-bg: #ffeb3b; --highlight-text: #000; }
-        body.dark-theme { --bg: #1e1e2e; --surface: #2a2a3c; --text: #e0e0e0; --text-secondary: #a0a0b0; --border-light: #3a3a4c; --editor-bg: #1e1e2e; --nodo-bg: #2a2a3c; --nodo-hover-bg: #35355a; --level-0-bg: #3d2e1c; --level-0-border: #f0a04b; --highlight-bg: #b8860b; --highlight-text: #fff; }
-        * { transition: background-color 0.25s, color 0.25s; }
-        body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', Roboto, system-ui, sans-serif; margin: 0; min-height: 100vh; }
-        .app-header { background: var(--header-bg); color: var(--header-text); padding: 12px 0; box-shadow: 0 4px 12px rgba(0,0,0,0.15); position: sticky; top: 0; z-index: 1050; }
-        .brand-wrapper { display: flex; align-items: center; gap: 10px; }
-        .logo-img { max-height: 36px; max-width: 120px; object-fit: contain; border-radius: 6px; }
-        .brand-name { font-weight: 700; font-size: 1.5rem; letter-spacing: -0.5px; }
-        .subtitle { font-size: 0.9rem; opacity: 0.8; }
-        .toolbar-acciones { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
-        .btn { border-radius: 30px; padding: 5px 14px; font-weight: 500; font-size: 0.85rem; white-space: nowrap; cursor: pointer; background: rgba(255,255,255,0.15); border: none; color: inherit; }
-        .btn-light { background: #f8f9fa; color: #212529; }
-        .btn-outline-light { background: transparent; border: 1px solid rgba(255,255,255,0.5); color: white; }
+        body { font-family: 'Segoe UI', sans-serif; background: #f4f7fc; color: #333; padding: 20px; }
+        .container { max-width: 1200px; margin: auto; }
+        .header { background: linear-gradient(135deg, #1a2a4a, #2c3e6b); color: white; padding: 15px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .btn { border: none; border-radius: 20px; padding: 8px 15px; cursor: pointer; font-weight: 500; }
+        .btn-light { background: #f8f9fa; color: #333; }
+        .btn-outline-light { background: transparent; border: 1px solid white; color: white; }
         .btn-outline-light:hover { background: rgba(255,255,255,0.2); }
-        .editor-area, .mapa-area { background: var(--surface); border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.06); padding: 16px; height: calc(100vh - 180px); display: flex; flex-direction: column; overflow: hidden; position: relative; }
-        .editor-area textarea { flex: 1; border: none; resize: none; font-family: 'Fira Code', 'Courier New', monospace; font-size: 14px; line-height: 1.7; padding: 12px; background-color: var(--editor-bg) !important; color: var(--text) !important; border-radius: 12px; outline: none; }
-        .mapa-area { overflow: hidden; }
-        .mapa-scroll { flex: 1; overflow-y: auto; }
-        .card-nodo { border-left: 5px solid; border-radius: 12px; padding: 10px 16px; margin-bottom: 10px; cursor: pointer; background: var(--nodo-bg); box-shadow: 0 1px 4px rgba(0,0,0,0.04); }
-        .level-0 { border-left-color: var(--level-0-border); background: var(--level-0-bg); }
-        .level-1 { border-left-color: var(--level-1-border); }
-        .level-2 { border-left-color: var(--level-2-border); }
-        .level-3 { border-left-color: var(--level-3-border); }
-        .level-4 { border-left-color: var(--level-4-border); }
-        .nodo-titulo { font-weight: 600; display: flex; justify-content: space-between; align-items: center; }
-        .nodo-hijos { margin-left: 28px; padding-left: 16px; border-left: 2px dashed #ccc; margin-top: 8px; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .panel { background: white; border-radius: 12px; padding: 15px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+        textarea { width: 100%; height: 70vh; border: none; outline: none; font-family: monospace; font-size: 14px; resize: none; }
+        .node { border-left: 5px solid #3498db; padding: 8px; margin-bottom: 5px; cursor: pointer; background: #fafafa; border-radius: 6px; }
+        .node:hover { background: #f0f0f0; }
+        .children { margin-left: 20px; border-left: 2px dashed #ddd; padding-left: 10px; }
         .collapsed { display: none; }
-        .icono-toggle { font-size: 0.9rem; opacity: 0.6; }
-        .search-box { display: flex; align-items: center; background: var(--surface); border-radius: 20px; padding: 4px 8px; border: 1px solid var(--border-light); margin-bottom: 8px; }
-        .search-box input { border: none; background: transparent; outline: none; flex: 1; color: var(--text); }
-        .reader-panel { background: var(--surface); border-radius: 12px; padding: 8px 12px; margin-bottom: 8px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; border-bottom: 1px solid var(--border-light); }
-        .dropdown { position: relative; }
-        .dropdown-menu { display: none; position: absolute; right: 0; top: 100%; background: var(--surface); border: 1px solid var(--border-light); border-radius: 12px; min-width: 220px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 1000; padding: 8px 0; }
-        .dropdown-menu.show { display: block; }
-        .dropdown-item { display: block; padding: 8px 16px; color: var(--text); text-decoration: none; cursor: pointer; white-space: nowrap; }
-        .dropdown-item:hover { background: #f0f0f0; }
-        .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 3000; align-items: center; justify-content: center; }
-        .modal-overlay.show { display: flex; }
-        .modal-content { background: var(--surface); border-radius: 16px; max-width: 500px; width: 90%; padding: 20px; max-height: 80vh; overflow-y: auto; }
-        .btn-sumula-accion { background: #ffcd3c; color: #212529; border: none; border-radius: 30px; padding: 5px 14px; font-weight: 700; cursor: pointer; margin-top: 10px; }
-        .node-select { margin-right: 8px; transform: scale(1.2); cursor: pointer; }
-        .highlight-word { background: var(--highlight-bg); color: var(--highlight-text); border-radius: 3px; font-weight: bold; }
-        .timer-display { font-family: monospace; font-weight: bold; }
-        .btn-fullscreen { position: absolute; top: 8px; right: 8px; background: rgba(0,0,0,0.1); border: none; border-radius: 50%; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--text-secondary); z-index: 10; }
-        .btn-fullscreen:hover { background: rgba(0,0,0,0.2); }
-        .fullscreen-panel { position: fixed !important; top: 0; left: 0; width: 100vw !important; height: 100vh !important; z-index: 2000; border-radius: 0 !important; padding: 20px !important; }
-        #karaokeModal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--surface); z-index: 2000; }
-        #karaokeModal.show { display: flex; flex-direction: column; }
-        #karaokeHeader { display: flex; justify-content: space-between; align-items: center; padding: 10px 20px; background: var(--header-bg); color: white; }
-        #karaokeBody { flex: 1; padding: 40px; font-size: 1.5rem; line-height: 2; overflow-y: auto; }
-        .karaoke-word { transition: background 0.2s; }
+        .icon { font-size: 0.8rem; opacity: 0.6; }
     </style>
 </head>
 <body>
-    <!-- Header -->
-    <div class="app-header">
-        <div class="container">
-            <div class="row align-items-center">
-                <div class="col-md-5">
-                    <div class="brand-wrapper">
-                        <i class="fas fa-brain fa-2x" style="color:#ffcd3c;"></i>
-                        <div>
-                            <div class="brand-name">Nexus <span style="color:#ffcd3c;">Acelerador</span></div>
-                            <div class="subtitle" id="tituloDinamico">Centro de Conocimiento</div>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-7 toolbar-acciones justify-content-end mt-2 mt-md-0">
-                    <button class="btn btn-outline-light" id="btnSumula">SÚMULA</button>
-                    <button class="btn btn-outline-light" id="btnCorolario">Corolario</button>
-                    <button class="btn btn-outline-light" id="btnConfig"><i class="fas fa-cog"></i></button>
-                    <button class="btn btn-outline-light" id="btnAPA">APA</button>
-                    <div class="dropdown">
-                        <button class="btn btn-light dropdown-toggle" id="dropdownBtn">Acciones</button>
-                        <div class="dropdown-menu" id="dropdownMenu">
-                            <a class="dropdown-item" id="exportarHtml"><i class="fas fa-file-code"></i> Exportar HTML</a>
-                            <a class="dropdown-item" id="exportarTree"><i class="fas fa-tree"></i> Exportar Árbol TXT</a>
-                            <a class="dropdown-item" id="exportarTxt"><i class="fas fa-file-alt"></i> Exportar TXT Raw</a>
-                            <a class="dropdown-item" id="exportarMd"><i class="fab fa-markdown"></i> Exportar Markdown</a>
-                            <a class="dropdown-item" id="exportarTxtEnriquecido"><i class="fas fa-book-open"></i> Exportar TXT Enriquecido</a>
-                            <hr>
-                            <a class="dropdown-item" id="vistaPreviaHtml"><i class="fas fa-eye"></i> Vista previa HTML</a>
-                            <a class="dropdown-item" id="publicarVercel"><i class="fas fa-rocket"></i> Publicar</a>
-                        </div>
-                    </div>
-                    <button class="btn btn-light" id="expandirTodo"><i class="fas fa-expand-alt"></i></button>
-                    <button class="btn btn-light" id="colapsarTodo"><i class="fas fa-compress-alt"></i></button>
-                    <button class="btn btn-light" id="btnUndo"><i class="fas fa-undo"></i></button>
-                    <button class="btn btn-light" id="btnRedo"><i class="fas fa-redo"></i></button>
-                    <button class="btn btn-outline-light" id="btnTheme"><i class="fas fa-moon"></i></button>
-                </div>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h2 style="margin:0;">Nexus Acelerador</h2>
+            <div>
+                <button class="btn btn-outline-light" id="btnSumula">SÚMULA</button>
+                <button class="btn btn-outline-light" id="btnCorolario">Corolario</button>
+                <button class="btn btn-outline-light" onclick="document.getElementById('exportarHtml').click()">Exportar HTML</button>
+                <button class="btn btn-light" id="btnTheme">🌙</button>
+            </div>
+        </div>
+        <!-- Grid -->
+        <div class="grid">
+            <!-- Editor -->
+            <div class="panel">
+                <textarea id="contenido" spellcheck="false"></textarea>
+            </div>
+            <!-- Mapa -->
+            <div class="panel">
+                <div id="mapa"></div>
             </div>
         </div>
     </div>
-
-    <!-- Cuerpo -->
-    <div class="container mt-3">
-        <div class="row g-3">
-            <div class="col-lg-6" id="panelEditor">
-                <div class="editor-area">
-                    <button class="btn-fullscreen" data-target="panelEditor"><i class="fas fa-expand"></i></button>
-                    <textarea id="contenido" spellcheck="false"></textarea>
-                </div>
-            </div>
-            <div class="col-lg-6" id="panelMapa">
-                <div class="mapa-area">
-                    <button class="btn-fullscreen" data-target="panelMapa"><i class="fas fa-expand"></i></button>
-                    <div class="search-box">
-                        <i class="fas fa-search"></i>
-                        <input type="text" id="searchInput" placeholder="Buscar en mapa...">
-                        <button id="clearSearch">✕</button>
-                    </div>
-                    <div class="reader-panel" id="readerPanel">
-                        <button class="btn btn-sm btn-primary" id="btnPlayPause">▶</button>
-                        <button class="btn btn-sm btn-warning" id="btnPause" style="display:none;">⏸</button>
-                        <button class="btn btn-sm btn-secondary" id="btnStop">⏹</button>
-                        <button class="btn btn-sm btn-danger" id="btnRec"><i class="fas fa-circle"></i></button>
-                        <button class="btn btn-sm btn-info" id="btnTimer">⏱</button>
-                        <button class="btn btn-sm btn-success" id="btnKaraoke"><i class="fas fa-book-open"></i></button>
-                        <button class="btn btn-sm btn-warning" id="btnLoop">🔁</button>
-                        <select class="form-select form-select-sm" id="voiceSelect" style="width:auto;"></select>
-                        <span id="currentReading" class="text-muted small">Listo</span>
-                        <span id="timerDisplay" class="timer-display">00:00</span>
-                        <span id="estimatedTime" class="text-muted small"></span>
-                    </div>
-                    <div class="mapa-scroll" id="mapaScroll">
-                        <div id="mapa"></div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Modales -->
-    <div class="modal-overlay" id="sumulaModal">
-        <div class="modal-content">
-            <div class="modal-header"><h5 class="modal-title">Importar a SÚMULA</h5><button class="btn-close" id="closeSumulaModal">&times;</button></div>
-            <input type="file" class="form-control" id="fileSumulaInput" accept=".pdf,.docx,.txt,.html,.htm">
-            <div class="text-center my-2">- O -</div>
-            <textarea class="form-control" id="pastedTextSumula" rows="4" placeholder="Pega texto o código HTML..."></textarea>
-            <div class="d-flex justify-content-between mt-2">
-                <button class="btn btn-secondary" id="cancelSumula">Cancelar</button>
-                <button class="btn-sumula-accion" id="processSumula">Procesar</button>
-            </div>
-        </div>
-    </div>
-    <div class="modal-overlay" id="configModal">
-        <div class="modal-content">
-            <div class="modal-header"><h5 class="modal-title">Configuración</h5><button class="btn-close" id="closeConfigModal">&times;</button></div>
-            <input type="text" class="form-control" id="logoFilename" placeholder="Nombre logo.png">
-            <button class="btn btn-primary mt-2" id="saveConfig">Guardar</button>
-        </div>
-    </div>
-    <div class="modal-overlay" id="apaModal">
-        <div class="modal-content">
-            <div class="modal-header"><h5 class="modal-title">Datos del proyecto (APA)</h5><button class="btn-close" id="closeApaModal">&times;</button></div>
-            <div class="mb-2"><label>Autor</label><input type="text" class="form-control" id="apaAuthor"></div>
-            <div class="mb-2"><label>Título</label><input type="text" class="form-control" id="apaTitle"></div>
-            <div class="mb-2"><label>Fecha</label><input type="date" class="form-control" id="apaDate"></div>
-            <button class="btn btn-primary w-100" id="saveAPA">Guardar APA</button>
-        </div>
-    </div>
-    <div id="karaokeModal">
-        <div id="karaokeHeader">
-            <h4 id="karaokeTitle">📖 Lectura Asistida</h4>
-            <button class="btn-close" id="closeKaraoke">&times;</button>
-        </div>
-        <div id="karaokeBody">
-            <p id="karaokeText"></p>
-        </div>
-    </div>
-
-    <div class="footer text-center p-2"><i class="fas fa-bolt"></i> Acelera tus ideas</div>
 
     <script>
     (function() {
-        try {
-        // ==== VARIABLES GLOBALES ====
+        // Elementos
         const textarea = document.getElementById('contenido');
         const mapaDiv = document.getElementById('mapa');
-        const tituloDin = document.getElementById('tituloDinamico');
-        const searchInput = document.getElementById('searchInput');
-        const clearSearchBtn = document.getElementById('clearSearch');
-        const voiceSelect = document.getElementById('voiceSelect');
-        const btnPlayPause = document.getElementById('btnPlayPause');
-        const btnPause = document.getElementById('btnPause');
-        const btnStop = document.getElementById('btnStop');
-        const btnRec = document.getElementById('btnRec');
-        const btnTimer = document.getElementById('btnTimer');
-        const btnKaraoke = document.getElementById('btnKaraoke');
-        const btnLoop = document.getElementById('btnLoop');
-        const currentReadingSpan = document.getElementById('currentReading');
-        const timerDisplay = document.getElementById('timerDisplay');
-        const estimatedTime = document.getElementById('estimatedTime');
-        const karaokeModal = document.getElementById('karaokeModal');
-        const karaokeText = document.getElementById('karaokeText');
-        const karaokeTitle = document.getElementById('karaokeTitle');
-        const closeKaraoke = document.getElementById('closeKaraoke');
 
-        let synth = window.speechSynthesis;
-        let utterance = null;
-        let isLooping = false;
-        let isRecording = false;
-        let mediaRecorder = null;
-        let audioChunks = [];
-        let timerInterval = null;
-        let elapsedSeconds = 0;
-        let elapsedBase = 0;
-        let startTime = 0;
-        let currentReadingList = [];
-        let currentReadingIndex = 0;
-        let currentNodoId = null;
-        let selectedIds = new Set();
-        let historial = [], historialPos = -1;
-        let karaokeWords = [];
-
-        // ==== FUNCIONES BÁSICAS ====
-        function guardarContenido() { localStorage.setItem('nexus_contenido', textarea.value); }
-        function cargarContenido() { textarea.value = localStorage.getItem('nexus_contenido') || ejemplo; }
-        function pushHistorial() { historial.push(textarea.value); historialPos = historial.length - 1; }
-        function undo() { if (historialPos > 0) { historialPos--; textarea.value = historial[historialPos]; generarMapa(); } }
-        function redo() { if (historialPos < historial.length - 1) { historialPos++; textarea.value = historial[historialPos]; generarMapa(); } }
-        function aplicarTema() { const t = localStorage.getItem('nexus_theme'); document.body.classList.toggle('dark-theme', t === 'dark'); document.getElementById('btnTheme').innerHTML = t === 'dark' ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>'; }
-        function toggleTema() { localStorage.setItem('nexus_theme', document.body.classList.contains('dark-theme') ? 'light' : 'dark'); aplicarTema(); }
-
+        // Ejemplo por defecto
         const ejemplo = `# Acelerador de Conocimiento
 ## ¿Qué es?
 - Herramienta para estructurar ideas jerárquicamente.
@@ -243,472 +65,145 @@
 ### Edición en tiempo real
 ### Interactividad`;
 
-        // ==== PARSEO Y RENDERIZADO ====
+        // Cargar contenido guardado o ejemplo
+        textarea.value = localStorage.getItem('nexus_contenido') || ejemplo;
+
+        // Guardar cambios
+        textarea.addEventListener('input', () => {
+            localStorage.setItem('nexus_contenido', textarea.value);
+            generarMapa();
+        });
+
+        // Función de parseo
         function parsear(texto) {
-            const lineas = texto.split(/\r?\n/); const nodos = []; let pila = []; let id = 1;
+            const lineas = texto.split('\n');
+            const nodos = [];
+            let pila = [];
+            let id = 1;
             for (let linea of lineas) {
-                linea = linea.trim(); if (!linea) continue;
-                let nivel = -1, etiqueta = linea;
-                if (linea.startsWith("# ")) { nivel = 0; etiqueta = linea.slice(2); }
-                else if (linea.startsWith("## ")) { nivel = 1; etiqueta = linea.slice(3); }
-                else if (linea.startsWith("### ")) { nivel = 2; etiqueta = linea.slice(4); }
-                else if (linea.startsWith("#### ")) { nivel = 3; etiqueta = linea.slice(5); }
-                else if (linea.startsWith("- ") || linea.startsWith("* ")) { nivel = pila.length ? pila[pila.length-1].nivel + 1 : 1; etiqueta = linea.slice(2); }
+                linea = linea.trim();
+                if (!linea) continue;
+                let nivel = -1;
+                let etiqueta = linea;
+                if (linea.startsWith('# ')) { nivel = 0; etiqueta = linea.slice(2); }
+                else if (linea.startsWith('## ')) { nivel = 1; etiqueta = linea.slice(3); }
+                else if (linea.startsWith('### ')) { nivel = 2; etiqueta = linea.slice(4); }
+                else if (linea.startsWith('- ')) { nivel = pila.length ? pila[pila.length-1].nivel + 1 : 1; etiqueta = linea.slice(2); }
                 else { nivel = pila.length ? pila[pila.length-1].nivel + 1 : 1; etiqueta = linea; }
+
                 while (pila.length && pila[pila.length-1].nivel >= nivel) pila.pop();
                 const padreId = pila.length ? pila[pila.length-1].id : null;
-                nodos.push({ id: id, etiqueta, nivel, padreId }); pila.push({ id: id, nivel }); id++;
+                nodos.push({ id: id, etiqueta, nivel, padreId });
+                pila.push({ id: id, nivel });
+                id++;
             }
-            const hijosMap = new Map(); nodos.forEach(n => hijosMap.set(n.id, []));
+            const hijosMap = new Map();
+            nodos.forEach(n => hijosMap.set(n.id, []));
             nodos.forEach(n => { if (n.padreId) hijosMap.get(n.padreId).push(n.id); });
             return { nodos, hijosMap, raices: nodos.filter(n => n.padreId === null) };
         }
-        const parsearString = parsear.toString();
-        const parsearBody = parsearString.slice(parsearString.indexOf('{') + 1, parsearString.lastIndexOf('}')).trim();
 
-        function renderizar(raices, nodosMap, hijosMap, searchTerm = '') {
-            if (!raices.length) { mapaDiv.innerHTML = '<div class="alert alert-warning">⚠️ Usa # para la raíz.</div>'; return; }
-            const contenedor = document.createElement('div');
-            const term = searchTerm.toLowerCase().trim();
-            function construir(idNodo) {
-                const nodo = nodosMap.get(idNodo); if (!nodo) return null;
-                const hijos = hijosMap.get(idNodo) || [];
-                const coincide = !term || nodo.etiqueta.toLowerCase().includes(term);
-                if (term && !coincide) return null;
+        // Función de renderizado
+        function generarMapa() {
+            const { nodos, hijosMap, raices } = parsear(textarea.value);
+            const nodosMap = new Map(nodos.map(n => [n.id, n]));
+            mapaDiv.innerHTML = '';
+
+            function construir(id) {
+                const nodo = nodosMap.get(id);
+                if (!nodo) return null;
+                const hijos = hijosMap.get(id) || [];
                 const card = document.createElement('div');
-                card.className = `card-nodo level-${Math.min(nodo.nivel, 7)}`;
-                const check = document.createElement('input');
-                check.type = 'checkbox'; check.className = 'node-select';
-                check.dataset.id = idNodo; check.checked = selectedIds.has(idNodo);
-                check.addEventListener('click', (e) => e.stopPropagation());
-                check.addEventListener('change', () => { if (check.checked) selectedIds.add(idNodo); else selectedIds.delete(idNodo); calcularTiempoEstimado(); });
-                const tituloDiv = document.createElement('div'); tituloDiv.className = 'nodo-titulo';
-                tituloDiv.appendChild(check);
-                const span = document.createElement('span'); span.textContent = nodo.etiqueta; span.setAttribute('data-id', idNodo);
-                tituloDiv.appendChild(span);
-                let icono = null;
-                if (hijos.length) { icono = document.createElement('span'); icono.className = 'icono-toggle'; icono.textContent = '▶'; tituloDiv.appendChild(icono); }
-                card.appendChild(tituloDiv);
-                let contHijos = null;
+                card.className = 'node';
+                card.innerHTML = `<span>${nodo.etiqueta}</span>`;
                 if (hijos.length) {
-                    contHijos = document.createElement('div'); contHijos.className = 'nodo-hijos collapsed';
-                    hijos.forEach(h => { const c = construir(h); if (c) contHijos.appendChild(c); });
-                    card.appendChild(contHijos);
+                    const icon = document.createElement('span');
+                    icon.className = 'icon';
+                    icon.textContent = '▶';
+                    card.appendChild(icon);
+                    const cont = document.createElement('div');
+                    cont.className = 'children collapsed';
+                    hijos.forEach(h => {
+                        const c = construir(h);
+                        if (c) cont.appendChild(c);
+                    });
+                    card.appendChild(cont);
+                    card.onclick = () => {
+                        cont.classList.toggle('collapsed');
+                        icon.textContent = cont.classList.contains('collapsed') ? '▶' : '▼';
+                    };
                 }
-                card.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    if (contHijos && icono) { contHijos.classList.toggle('collapsed'); icono.textContent = contHijos.classList.contains('collapsed') ? '▶' : '▼'; }
-                });
-                span.addEventListener('dblclick', (e) => {
-                    e.stopPropagation();
-                    const orig = span.textContent;
-                    const input = document.createElement('input'); input.type = 'text'; input.value = orig;
-                    input.className = 'form-control form-control-sm'; input.style.width = '100%';
-                    span.replaceWith(input); input.focus();
-                    input.addEventListener('blur', () => { if (input.value.trim() !== orig) actualizarNodoEnTexto(idNodo, orig, input.value.trim()); generarMapa(); });
-                });
                 return card;
             }
-            raices.forEach(r => { const c = construir(r.id); if (c) contenedor.appendChild(c); });
-            mapaDiv.innerHTML = ''; mapaDiv.appendChild(contenedor);
-        }
 
-        function actualizarNodoEnTexto(id, viejo, nuevo) {
-            let lineas = textarea.value.split('\n');
-            for (let i = 0; i < lineas.length; i++) { if (lineas[i].trim().endsWith(viejo)) { lineas[i] = lineas[i].substring(0, lineas[i].lastIndexOf(viejo)) + nuevo; break; } }
-            textarea.value = lineas.join('\n'); pushHistorial(); guardarContenido();
-        }
-
-        function generarMapa() {
-            if (!textarea.value.trim()) { mapaDiv.innerHTML = '<div class="alert alert-info">Escribe contenido.</div>'; return; }
-            const { nodos, hijosMap, raices } = parsear(textarea.value);
-            const nodosMap = new Map(nodos.map(n => [n.id, n]));
-            tituloDin.textContent = raices.length ? raices[0].etiqueta : 'Centro';
-            document.title = `Nexus Acelerador · ${tituloDin.textContent}`;
-            renderizar(raices, nodosMap, hijosMap, searchInput.value);
-            calcularTiempoEstimado();
-        }
-
-        // ==== LIMPIEZA OPTIMIZADA ====
-        function limpiarTexto(t) {
-            return t
-                .replace(/^#{1,6}\s*/gm, '')
-                .replace(/^[-*+]\s*/gm, '')
-                .replace(/^>\s?/gm, '')
-                .replace(/\*\*/g, '')
-                .replace(/__/g, '')
-                .replace(/\*/g, '')
-                .replace(/_/g, '')
-                .replace(/~~/g, '')
-                .replace(/`/g, '')
-                .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')
-                .replace(/!\[([^\]]*)\]\([^)]*\)/g, '$1')
-                .replace(/\n+/g, '. ')
-                .replace(/\s{2,}/g, ' ')
-                .trim();
-        }
-
-        // ==== LECTURA Y KARAOKE ====
-        function poblarVoces() {
-            const voces = synth.getVoices().filter(v => v.lang.startsWith('es'));
-            voiceSelect.innerHTML = '';
-            voces.forEach((v, i) => { const opt = document.createElement('option'); opt.value = i; opt.textContent = v.name; voiceSelect.appendChild(opt); });
-        }
-        synth.onvoiceschanged = poblarVoces; poblarVoces();
-
-        function obtenerTextoSeleccionado() {
-            const { nodos, hijosMap, raices } = parsear(textarea.value);
-            const nodosMap = new Map(nodos.map(n => [n.id, n]));
-            let textoFinal = [];
-            function recorrer(id) { const nodo = nodosMap.get(id); if (nodo) { textoFinal.push(nodo.etiqueta); (hijosMap.get(id)||[]).forEach(recorrer); } }
-            if (selectedIds.size > 0) {
-                Array.from(selectedIds).forEach(id => { if (nodosMap.has(id)) { textoFinal.push(nodosMap.get(id).etiqueta); (hijosMap.get(id)||[]).forEach(recorrer); } });
-            } else { raices.forEach(r => recorrer(r.id)); }
-            return textoFinal;
-        }
-
-        function mostrarKaraoke(texto) {
-            karaokeModal.classList.add('show');
-            karaokeTitle.textContent = '📖 Leyendo: ' + (texto.length > 50 ? texto.substring(0, 50) + '...' : texto);
-            karaokeText.innerHTML = '';
-            let limpio = limpiarTexto(texto);
-            let palabras = limpio.split(/\s+/);
-            karaokeWords = [];
-            palabras.forEach((pal, idx) => {
-                let span = document.createElement('span');
-                span.textContent = pal;
-                span.id = 'kw-' + idx;
-                span.classList.add('karaoke-word');
-                karaokeText.appendChild(span);
-                karaokeText.appendChild(document.createTextNode(' '));
-                karaokeWords.push(span);
+            raices.forEach(r => {
+                const c = construir(r.id);
+                if (c) mapaDiv.appendChild(c);
             });
         }
 
-        function leerSiguienteItem() {
-            if (currentReadingIndex >= currentReadingList.length) {
-                if (isLooping) { currentReadingIndex = 0; }
-                else { stopReading(); currentReadingSpan.textContent = 'Lectura finalizada.'; return; }
+        // Generar mapa inicial
+        generarMapa();
+
+        // Botón SÚMULA (abre un prompt simple para pegar texto)
+        document.getElementById('btnSumula').addEventListener('click', () => {
+            const texto = prompt("Pega tu texto aquí:");
+            if (texto) {
+                textarea.value = texto;
+                localStorage.setItem('nexus_contenido', texto);
+                generarMapa();
             }
-            const txt = currentReadingList[currentReadingIndex];
-            const limpio = limpiarTexto(txt);
-            if (!limpio) { currentReadingIndex++; leerSiguienteItem(); return; }
-            if (utterance) synth.cancel();
-            utterance = new SpeechSynthesisUtterance(limpio);
-            const voces = synth.getVoices().filter(v => v.lang.startsWith('es'));
-            if (voces.length) utterance.voice = voces[parseInt(voiceSelect.value)] || voces[0];
-            utterance.rate = 0.9; utterance.pitch = 1;
+        });
 
-            if (karaokeModal.classList.contains('show')) {
-                mostrarKaraoke(txt);
-                utterance.onboundary = (event) => {
-                    if (event.name === 'word' && karaokeWords.length > 0) {
-                        let charIndex = event.charIndex;
-                        let wordIndex = limpio.substring(0, charIndex).trim().split(/\s+/).length - 1;
-                        if (wordIndex >= 0 && wordIndex < karaokeWords.length) {
-                            karaokeWords[wordIndex].classList.add('highlight-word');
-                            for (let i = 0; i < karaokeWords.length; i++) {
-                                if (i !== wordIndex) karaokeWords[i].classList.remove('highlight-word');
-                            }
-                        }
-                    }
-                };
+        // Botón Corolario (carga un texto básico)
+        document.getElementById('btnCorolario').addEventListener('click', () => {
+            const corolario = `# Corolario Pedagógico
+## ¿Qué es?
+- Síntesis didáctica.
+## ¿Para qué sirve?
+- Guía práctica.
+## Características
+### La Fundación
+#### Detalles
+- Sin un Maestro Perfecto es imposible recibir el Naam.`;
+            textarea.value = corolario;
+            localStorage.setItem('nexus_contenido', corolario);
+            generarMapa();
+        });
+
+        // Botón tema oscuro
+        document.getElementById('btnTheme').addEventListener('click', () => {
+            document.body.classList.toggle('dark-theme');
+            // Añadir estilos para dark mode si no existen
+            if (!document.querySelector('style#darkStyle')) {
+                const style = document.createElement('style');
+                style.id = 'darkStyle';
+                style.textContent = 'body.dark-theme { background: #1e1e2e; color: #e0e0e0; } .panel { background: #2a2a3c; color: #e0e0e0; } .node { background: #333; color: #fff; }';
+                document.head.appendChild(style);
             }
+        });
 
-            utterance.onend = () => { currentReadingIndex++; leerSiguienteItem(); };
-            synth.speak(utterance);
-            currentReadingSpan.textContent = `Leyendo: "${limpio.substring(0,30)}..."`;
-            if (!timerInterval) iniciarCronometro();
-        }
-
-        function prepararLecturaDesdeNodo(id) {
-            currentReadingList = [];
-            const { nodos, hijosMap } = parsear(textarea.value);
-            const nodosMap = new Map(nodos.map(n => [n.id, n]));
-            function recorrer(id) { const n = nodosMap.get(id); if (!n) return; currentReadingList.push(n.etiqueta); (hijosMap.get(id)||[]).forEach(recorrer); }
-            if (nodosMap.has(id)) recorrer(id);
-            else currentReadingList = obtenerTextoSeleccionado();
-            currentReadingIndex = 0;
-        }
-
-        function togglePlayPause() {
-            try {
-                if (synth.speaking && !synth.paused) {
-                    synth.pause(); btnPlayPause.textContent = '▶'; btnPause.style.display = 'inline-block'; currentReadingSpan.textContent = 'Pausado';
-                    detenerCronometro();
-                } else if (synth.paused) {
-                    synth.resume(); btnPlayPause.textContent = '⏸'; btnPause.style.display = 'none'; currentReadingSpan.textContent = 'Reanudando...';
-                    iniciarCronometro();
-                } else {
-                    if (!currentNodoId) { const { raices } = parsear(textarea.value); if (raices.length) currentNodoId = raices[0].id; }
-                    if (currentReadingList.length === 0) prepararLecturaDesdeNodo(currentNodoId);
-                    currentReadingIndex = 0;
-                    leerSiguienteItem();
-                    btnPlayPause.textContent = '⏸';
-                    iniciarCronometro();
-                }
-            } catch(e) { console.error('Error en togglePlayPause:', e); }
-        }
-
-        function stopReading() {
-            try {
-                synth.cancel(); utterance = null; isLooping = false;
-                btnPlayPause.textContent = '▶'; btnPause.style.display = 'none'; btnLoop.textContent = '🔁';
-                currentReadingSpan.textContent = 'Detenido.';
-                detenerCronometro();
-                elapsedBase = 0;
-                timerDisplay.textContent = '00:00';
-                karaokeModal.classList.remove('show');
-            } catch(e) { console.error('Error en stopReading:', e); }
-        }
-
-        function iniciarCronometro() {
-            if (timerInterval) return;
-            startTime = Date.now();
-            timerInterval = setInterval(() => {
-                const current = Math.floor((Date.now() - startTime) / 1000);
-                elapsedSeconds = elapsedBase + current;
-                timerDisplay.textContent = new Date(elapsedSeconds * 1000).toISOString().substring(14, 19);
-            }, 1000);
-        }
-        function detenerCronometro() {
-            if (timerInterval) {
-                const current = Math.floor((Date.now() - startTime) / 1000);
-                elapsedBase += current;
-                clearInterval(timerInterval); timerInterval = null;
-            }
-        }
-
-        function calcularTiempoEstimado() {
-            const texto = obtenerTextoSeleccionado().join(' ');
-            const palabras = texto.trim().split(/\s+/).length;
-            const wpm = 175;
-            const segundos = Math.round((palabras / wpm) * 60);
-            estimatedTime.textContent = `Estimado: ${Math.floor(segundos/60)}m ${String(segundos%60).padStart(2,'0')}s (${palabras} palabras)`;
-        }
-
-        // ==== GRABACIÓN DE AUDIO ====
-        async function toggleRec() {
-            if (!isRecording) {
-                try {
-                    const stream = await navigator.mediaDevices.getDisplayMedia({ audio: true, video: false });
-                    mediaRecorder = new MediaRecorder(stream); audioChunks = [];
-                    mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
-                    mediaRecorder.onstop = () => {
-                        const blob = new Blob(audioChunks, { type: mediaRecorder.mimeType });
-                        const url = URL.createObjectURL(blob);
-                        const a = document.createElement('a'); a.href = url; a.download = `audio_${Date.now()}.webm`; a.click();
-                        isRecording = false; btnRec.innerHTML = '<i class="fas fa-circle"></i>';
-                    };
-                    mediaRecorder.start(); isRecording = true; btnRec.innerHTML = '<i class="fas fa-square"></i>';
-                    alert("Grabación iniciada.");
-                } catch(e) { alert("No soportado o cancelado."); }
-            } else { if (mediaRecorder) mediaRecorder.stop(); }
-        }
-
-        // ==== GENERAR HTML EXPORTADO (SIN ERRORES DE ESCAPE) ====
-        function generarHTMLExportado(texto, titulo) {
-            // Usamos JSON.stringify para incrustar el contenido de forma 100% segura
-            const contenidoJSON = JSON.stringify(texto).replace(/</g, '\\u003c');
+        // Exportar HTML (versión simple con el mapa)
+        document.getElementById('exportarHtml').addEventListener('click', () => {
+            const contenido = textarea.value;
+            const titulo = "Documento";
             const html = `<!DOCTYPE html>
 <html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>${titulo}</title>
-    <style>
-        :root{--bg:#f4f7fc;--surface:#fff;--text:#212529;--border:#ddd;--level0:#fef5e7;--level0b:#e67e22;--level1:#3498db;--level2:#2ecc71;--level3:#9b59b6;--level4:#e74c3c;--highlight:#ffeb3b;--highlight-t:#000}
-        body.dark-theme{--bg:#1e1e2e;--surface:#2a2a3c;--text:#e0e0e0;--border:#3a3a4c;--level0:#3d2e1c;--level0b:#f0a04b;--highlight:#b8860b;--highlight-t:#fff}
-        body{font-family:'Segoe UI',sans-serif;padding:20px;background:var(--bg);color:var(--text);transition:background 0.3s}
-        .toolbar-export{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap}
-        .btn-export{background:#f8f9fa;color:#212529;border:1px solid #ccc;border-radius:20px;padding:6px 12px;cursor:pointer;font-size:14px}
-        body.dark-theme .btn-export{background:#333;color:#fff;border-color:#555}
-        .btn-dark-export{background:#212529;color:white;border:none;border-radius:20px;padding:6px 12px;cursor:pointer;font-size:14px}
-        body.dark-theme .btn-dark-export{background:#f8f9fa;color:#212529}
-        .search-box{display:flex;align-items:center;background:var(--surface);border-radius:20px;padding:4px 8px;border:1px solid var(--border);margin-bottom:8px}
-        .search-box input{border:none;background:transparent;outline:none;flex:1;color:var(--text)}
-        .reader-panel{background:var(--surface);border-radius:12px;padding:8px;margin-bottom:8px;display:flex;gap:6px;flex-wrap:wrap;border-bottom:1px solid var(--border)}
-        .card-nodo{border-left:5px solid;padding:10px;margin-bottom:6px;cursor:pointer;background:var(--surface);border-radius:8px}
-        .card-nodo:hover{background:#f0f0f0}
-        .level-0{border-left-color:var(--level0b);background:var(--level0)}
-        .level-1{border-left-color:var(--level1)}
-        .level-2{border-left-color:var(--level2)}
-        .level-3{border-left-color:var(--level3)}
-        .level-4{border-left-color:var(--level4)}
-        .nodo-titulo{font-weight:600;display:flex;justify-content:space-between;align-items:center}
-        .nodo-hijos{margin-left:24px;padding-left:12px;border-left:2px dashed #ccc;margin-top:4px}
-        .collapsed{display:none}
-        .icono-toggle{font-size:0.9rem;opacity:0.6}
-        .highlight-word{background:var(--highlight);color:var(--highlight-t);border-radius:3px;font-weight:bold}
-        .timer-display{font-family:monospace;font-weight:bold}
-        select.form-select{background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:20px;padding:4px}
-        .node-select{margin-right:8px;transform:scale(1.2);cursor:pointer}
-        #karaokeModal{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:var(--surface);z-index:9999}
-        #karaokeModal.show{display:flex;flex-direction:column}
-        #karaokeHeader{display:flex;justify-content:space-between;align-items:center;padding:10px 20px;background:#1a2a4a;color:white}
-        #karaokeBody{flex:1;padding:40px;font-size:1.5rem;line-height:2;overflow-y:auto}
-        .karaoke-word{transition:background 0.2s}
-    </style>
+<head><meta charset="UTF-8"><title>${titulo}</title>
+<style>body{font-family:sans-serif;padding:20px}.node{border-left:5px solid #3498db;padding:8px;margin-bottom:5px;cursor:pointer;background:#fafafa}.children{margin-left:20px;border-left:2px dashed #ccc;padding-left:10px}.collapsed{display:none}</style>
 </head>
-<body>
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-        <h2 style="margin:0">${titulo}</h2>
-        <div style="display:flex;gap:6px">
-            <button class="btn-export" id="btnExpandirAll">Expandir Todo</button>
-            <button class="btn-export" id="btnColapsarAll">Colapsar Todo</button>
-            <button class="btn-dark-export" id="btnThemeExport">🌙 Modo Oscuro</button>
-        </div>
-    </div>
-    <div class="reader-panel">
-        <button class="btn-export" id="btnPlayPause">▶</button>
-        <button class="btn-export" id="btnPause" style="display:none">⏸</button>
-        <button class="btn-export" id="btnStop">⏹</button>
-        <button class="btn-export" id="btnLoop">🔁</button>
-        <button class="btn-export" id="btnKaraoke">📖</button>
-        <select id="voiceSelect" class="form-select"></select>
-        <span class="timer-display" id="timerDisplay">00:00</span>
-        <span id="currentReading" style="font-size:12px">Listo</span>
-    </div>
-    <div class="search-box">
-        <input type="text" id="searchInput" placeholder="Buscar...">
-        <button id="clearSearch">✕</button>
-    </div>
-    <div id="mapa"></div>
-    <div id="karaokeModal">
-        <div id="karaokeHeader">
-            <h4 id="karaokeTitle">📖 Lectura Asistida</h4>
-            <button class="btn-close" id="closeKaraoke">&times;</button>
-        </div>
-        <div id="karaokeBody"><p id="karaokeText"></p></div>
-    </div>
-    <script type="text/plain" id="contenido-export">${contenidoJSON}<\/script>
-    <script>
-        const t = document.getElementById('contenido-export').textContent;
-        function parsear(t){const l=t.split("\\n");let p=[],id=1,n=[];for(let i of l){i=i.trim();if(!i)continue;let v=-1,e=i;if(i.startsWith("# "))v=0,e=i.slice(2);else if(i.startsWith("## "))v=1,e=i.slice(3);else if(i.startsWith("### "))v=2,e=i.slice(4);else if(i.startsWith("#### "))v=3,e=i.slice(5);else if(i.startsWith("- ")){v=p.length?p[p.length-1].v+1:1;e=i.slice(2)}else{v=p.length?p[p.length-1].v+1:1;e=i}while(p.length&&p[p.length-1].v>=v)p.pop();const pId=p.length?p[p.length-1].id:null;n.push({id,v,e,pId});p.push({id:id++,v})}const h=new Map();n.forEach(x=>h.set(x.id,[]));n.forEach(x=>{if(x.pId)h.get(x.pId).push(x.id)});return{n,h,r:n.filter(x=>x.pId===null)}};
-        const d=parsear(t);
-        const selectedIds=new Set();
-        function construir(id){const x=d.n.find(y=>y.id===id);if(!x)return null;const c=document.createElement("div");c.className="card-nodo level-"+Math.min(x.v,4);const check=document.createElement("input");check.type="checkbox";check.className="node-select";check.dataset.id=id;check.onchange=()=>{if(check.checked)selectedIds.add(id);else selectedIds.delete(id)};const titulo=document.createElement("div");titulo.className="nodo-titulo";titulo.appendChild(check);const span=document.createElement("span");span.textContent=x.e;span.dataset.id=id;titulo.appendChild(span);c.appendChild(titulo);const hijos=d.h.get(id)||[];if(hijos.length){const icon=document.createElement("span");icon.className="icono-toggle";icon.textContent="▶";titulo.appendChild(icon);const cont=document.createElement("div");cont.className="nodo-hijos collapsed";hijos.forEach(y=>{const z=construir(y);if(z)cont.appendChild(z)});c.appendChild(cont);c.onclick=()=>{cont.classList.toggle("collapsed");icon.textContent=cont.classList.contains("collapsed")?"▶":"▼"}}return c};
-        const mapa=document.getElementById("mapa");d.r.forEach(r=>mapa.appendChild(construir(r.id)));
-        let dark=false;const btnDark=document.getElementById("btnThemeExport");btnDark.onclick=()=>{dark=!dark;document.body.classList.toggle("dark-theme",dark);btnDark.innerHTML=dark?"☀️ Modo Claro":"🌙 Modo Oscuro"};
-        document.getElementById("btnExpandirAll").onclick=()=>{document.querySelectorAll(".nodo-hijos").forEach(c=>c.classList.remove("collapsed"));document.querySelectorAll(".icono-toggle").forEach(i=>i.textContent="▼")};
-        document.getElementById("btnColapsarAll").onclick=()=>{document.querySelectorAll(".nodo-hijos").forEach(c=>c.classList.add("collapsed"));document.querySelectorAll(".icono-toggle").forEach(i=>i.textContent="▶")};
-        document.getElementById("searchInput").oninput=function(){const term=this.value.toLowerCase().trim();document.querySelectorAll(".card-nodo").forEach(c=>{const ok=!term||c.textContent.toLowerCase().includes(term);c.style.display=ok?"":"none"})};
-        document.getElementById("clearSearch").onclick=()=>{document.getElementById("searchInput").value="";document.querySelectorAll(".card-nodo").forEach(c=>c.style.display="")};
-        const synth=window.speechSynthesis;let utterance=null,currentReadingList=[],currentReadingIndex=0,isLooping=false,karaokeWords=[];
-        function poblarVoces(){const voces=synth.getVoices().filter(v=>v.lang.startsWith("es"));const sel=document.getElementById("voiceSelect");sel.innerHTML="";voces.forEach((v,i)=>{const o=document.createElement("option");o.value=i;o.textContent=v.name;sel.appendChild(o)})}synth.onvoiceschanged=poblarVoces;poblarVoces();
-        function limpiarTexto(t){return t.replace(/^#{1,6}\\s*/gm,"").replace(/^[-*+]\\s*/gm,"").replace(/^>\\s?/gm,"").replace(/\\*\\*/g,"").replace(/__/g,"").replace(/\\*/g,"").replace(/_/g,"").replace(/~~/g,"").replace(/`/g,"").replace(/\\[([^\\]]*)\\]\\([^)]*\\)/g,"$1").replace(/!\\[([^\\]]*)\\]\\([^)]*\\)/g,"$1").replace(/\\n+/g,". ").replace(/\\s{2,}/g," ").trim()}
-        function obtenerTextoSeleccionado(){let textoFinal=[];function recorrer(id){const x=d.n.find(y=>y.id===id);if(!x)return;textoFinal.push(x.e);(d.h.get(id)||[]).forEach(recorrer)}if(selectedIds.size>0){Array.from(selectedIds).forEach(id=>{const x=d.n.find(y=>y.id===id);if(x){textoFinal.push(x.e);(d.h.get(id)||[]).forEach(recorrer)}})}else d.r.forEach(r=>recorrer(r.id));return textoFinal}
-        function mostrarKaraoke(texto){const modal=document.getElementById("karaokeModal");modal.classList.add("show");document.getElementById("karaokeTitle").textContent="📖 Leyendo: "+(texto.length>50?texto.substring(0,50)+"...":texto);const body=document.getElementById("karaokeText");body.innerHTML="";const palabras=limpiarTexto(texto).split(/\\s+/);karaokeWords=[];palabras.forEach((pal,idx)=>{const s=document.createElement("span");s.textContent=pal;s.id="kw-"+idx;s.className="karaoke-word";body.appendChild(s);body.appendChild(document.createTextNode(" "));karaokeWords.push(s)})}
-        function leerSiguiente(){if(currentReadingIndex>=currentReadingList.length){if(isLooping)currentReadingIndex=0;else{stopReading();return}}const txt=currentReadingList[currentReadingIndex];const limpio=limpiarTexto(txt);if(utterance)synth.cancel();utterance=new SpeechSynthesisUtterance(limpio);const voces=synth.getVoices().filter(v=>v.lang.startsWith("es"));if(voces.length)utterance.voice=voces[parseInt(document.getElementById("voiceSelect").value)]||voces[0];utterance.rate=0.9;utterance.pitch=1;if(document.getElementById("karaokeModal").classList.contains("show")){mostrarKaraoke(txt);utterance.onboundary=(event)=>{if(event.name==='word'&&karaokeWords.length>0){let wordIndex=limpio.substring(0,event.charIndex).trim().split(/\\s+/).length-1;if(wordIndex>=0&&wordIndex<karaokeWords.length){karaokeWords[wordIndex].classList.add("highlight-word");for(let i=0;i<karaokeWords.length;i++){if(i!==wordIndex)karaokeWords[i].classList.remove("highlight-word")}}}};utterance.onend=()=>{currentReadingIndex++;leerSiguiente()};synth.speak(utterance);document.getElementById("currentReading").textContent="Leyendo: "+limpio.substring(0,30)+"..."}
-        function prepararLectura(id){currentReadingList=[];function recorrer(id){const x=d.n.find(y=>y.id===id);if(!x)return;currentReadingList.push(x.e);(d.h.get(id)||[]).forEach(recorrer)}if(d.n.find(y=>y.id===id))recorrer(id);else currentReadingList=obtenerTextoSeleccionado();currentReadingIndex=0}
-        let timerInterval=null,elapsedBase=0,startTime=0;function iniciarTimer(){if(timerInterval)return;startTime=Date.now();timerInterval=setInterval(()=>{const current=Math.floor((Date.now()-startTime)/1000);const total=elapsedBase+current;document.getElementById("timerDisplay").textContent=new Date(total*1000).toISOString().substring(14,19)},1000)}function detenerTimer(){if(timerInterval){const current=Math.floor((Date.now()-startTime)/1000);elapsedBase+=current;clearInterval(timerInterval);timerInterval=null}}
-        document.getElementById("btnPlayPause").onclick=()=>{if(synth.speaking&&!synth.paused){synth.pause();document.getElementById("btnPlayPause").textContent="▶";document.getElementById("btnPause").style.display="inline-block";detenerTimer()}else if(synth.paused){synth.resume();document.getElementById("btnPlayPause").textContent="⏸";document.getElementById("btnPause").style.display="none";iniciarTimer()}else{if(!currentReadingList.length){const raiz=d.r[0].id;prepararLectura(raiz);currentReadingIndex=0}leerSiguiente();document.getElementById("btnPlayPause").textContent="⏸";iniciarTimer()}};
-        document.getElementById("btnPause").onclick=()=>{synth.pause();document.getElementById("btnPlayPause").textContent="▶";document.getElementById("btnPause").style.display="none";detenerTimer()};
-        document.getElementById("btnStop").onclick=()=>{synth.cancel();document.getElementById("btnPlayPause").textContent="▶";document.getElementById("btnPause").style.display="none";document.getElementById("currentReading").textContent="Detenido.";detenerTimer();elapsedBase=0;document.getElementById("timerDisplay").textContent="00:00"};
-        document.getElementById("btnLoop").onclick=()=>{isLooping=!isLooping;if(isLooping&&!synth.speaking)document.getElementById("btnPlayPause").click()};
-        document.getElementById("btnKaraoke").onclick=()=>{const modal=document.getElementById("karaokeModal");if(modal.classList.contains("show"))modal.classList.remove("show");else{if(currentReadingList.length>0&&currentReadingIndex<currentReadingList.length){mostrarKaraoke(currentReadingList[currentReadingIndex])}else alert("Inicia la reproducción para ver la lectura asistida.")}};
-        document.getElementById("closeKaraoke").onclick=()=>document.getElementById("karaokeModal").classList.remove("show");
-    <\/script>
-</body>
-</html>`;
-            return html;
-        }
-
-        // ==== EXPORTACIONES ====
-        function descargarArchivo(blob, nombre) { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = nombre; a.click(); URL.revokeObjectURL(a.href); }
-        function obtenerTitulo() { return tituloDin.textContent || 'Centro'; }
-
-        document.getElementById('exportarHtml').addEventListener('click', () => {
-            const texto = textarea.value; if (!texto.trim()) return;
-            const titulo = obtenerTitulo();
-            const html = generarHTMLExportado(texto, titulo);
-            descargarArchivo(new Blob([html], { type: 'text/html' }), `${titulo.replace(/\s+/g, '_')}.html`);
+<body><div id="mapa"></div><script>
+const t = ${JSON.stringify(contenido)};
+function parsear(t){const l=t.split("\\n");let p=[],id=1,n=[];for(let i of l){i=i.trim();if(!i)continue;let v=-1,e=i;if(i.startsWith("# "))v=0,e=i.slice(2);else if(i.startsWith("## "))v=1,e=i.slice(3);else if(i.startsWith("### "))v=2,e=i.slice(4);else if(i.startsWith("- ")){v=p.length?p[p.length-1].v+1:1;e=i.slice(2)}else{v=p.length?p[p.length-1].v+1:1;e=i}while(p.length&&p[p.length-1].v>=v)p.pop();const pId=p.length?p[p.length-1].id:null;n.push({id,v,e,pId});p.push({id:id++,v})}const h=new Map();n.forEach(x=>h.set(x.id,[]));n.forEach(x=>{if(x.pId)h.get(x.pId).push(x.id)});return{n,h,r:n.filter(x=>x.pId===null)}};
+const d=parsear(t);function construir(id){const x=d.n.find(y=>y.id===id);if(!x)return null;const c=document.createElement("div");c.className="node";c.innerHTML=x.e;const h=d.h.get(id)||[];if(h.length){const cc=document.createElement("div");cc.className="children collapsed";h.forEach(y=>{const z=construir(y);if(z)cc.appendChild(z)});c.appendChild(cc);c.onclick=()=>cc.classList.toggle("collapsed")}return c}const m=document.getElementById("mapa");d.r.forEach(r=>m.appendChild(construir(r.id)));
+</script></body></html>`;
+            const blob = new Blob([html], { type: 'text/html' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = 'documento.html';
+            a.click();
         });
 
-        document.getElementById('vistaPreviaHtml').addEventListener('click', () => {
-            const texto = textarea.value; if (!texto.trim()) return;
-            const titulo = obtenerTitulo();
-            const html = generarHTMLExportado(texto, titulo);
-            const w = window.open('', '_blank');
-            w.document.write(html);
-            w.document.close();
-        });
-
-        document.getElementById('exportarTree').addEventListener('click', () => {
-            const { nodos, hijosMap, raices } = parsear(textarea.value);
-            const nodosMap = new Map(nodos.map(n => [n.id, n]));
-            let tree = '';
-            function armar(id, pref, esUlt) { const n = nodosMap.get(id); tree += pref + (esUlt ? '└── ' : '├── ') + n.etiqueta + '\n'; const hijos = hijosMap.get(id) || []; hijos.forEach((h,i) => armar(h, pref + (esUlt ? '    ' : '│   '), i===hijos.length-1)); }
-            raices.forEach((r,i) => armar(r.id, '', i===raices.length-1));
-            descargarArchivo(new Blob([tree], {type:'text/plain'}), 'arbol.txt');
-        });
-        document.getElementById('exportarTxt').addEventListener('click', () => descargarArchivo(new Blob([textarea.value], {type:'text/plain'}), 'contenido.txt'));
-        document.getElementById('exportarMd').addEventListener('click', () => descargarArchivo(new Blob([textarea.value], {type:'text/markdown'}), 'contenido.md'));
-        document.getElementById('exportarTxtEnriquecido').addEventListener('click', () => descargarArchivo(new Blob([textarea.value], {type:'text/plain'}), 'enriquecido.txt'));
-        document.getElementById('publicarVercel').addEventListener('click', () => { document.getElementById('exportarHtml').click(); alert('HTML listo para Vercel.'); });
-
-        // ==== EVENTOS GENERALES ====
-        textarea.addEventListener('input', () => { clearTimeout(timeoutId); timeoutId = setTimeout(() => { pushHistorial(); guardarContenido(); generarMapa(); }, 300); });
-        let timeoutId;
-        searchInput.addEventListener('input', generarMapa);
-        clearSearchBtn.addEventListener('click', () => { searchInput.value = ''; generarMapa(); });
-        document.getElementById('expandirTodo').addEventListener('click', () => { document.querySelectorAll('.nodo-hijos').forEach(c => c.classList.remove('collapsed')); document.querySelectorAll('.icono-toggle').forEach(i => i.textContent = '▼'); });
-        document.getElementById('colapsarTodo').addEventListener('click', () => { document.querySelectorAll('.nodo-hijos').forEach(c => c.classList.add('collapsed')); document.querySelectorAll('.icono-toggle').forEach(i => i.textContent = '▶'); });
-        document.getElementById('btnUndo').addEventListener('click', undo);
-        document.getElementById('btnRedo').addEventListener('click', redo);
-        document.getElementById('btnTheme').addEventListener('click', toggleTema);
-        document.querySelectorAll('.btn-fullscreen').forEach(btn => { btn.addEventListener('click', () => { const panel = document.getElementById(btn.dataset.target); panel.classList.toggle('fullscreen-panel'); btn.innerHTML = panel.classList.contains('fullscreen-panel') ? '<i class="fas fa-compress"></i>' : '<i class="fas fa-expand"></i>'; const otro = panel.id === 'panelEditor' ? 'panelMapa' : 'panelEditor'; document.getElementById(otro).style.display = panel.classList.contains('fullscreen-panel') ? 'none' : ''; }); });
-
-        // Controles de audio
-        btnPlayPause.addEventListener('click', togglePlayPause);
-        btnPause.addEventListener('click', () => { synth.pause(); btnPlayPause.textContent = '▶'; btnPause.style.display = 'none'; detenerCronometro(); });
-        btnStop.addEventListener('click', stopReading);
-        btnLoop.addEventListener('click', () => { isLooping = !isLooping; btnLoop.textContent = isLooping ? '🔁✅' : '🔁'; if (isLooping && !synth.speaking) togglePlayPause(); });
-        btnRec.addEventListener('click', toggleRec);
-        btnTimer.addEventListener('click', () => { if (timerInterval) { detenerCronometro(); } else iniciarCronometro(); });
-        btnKaraoke.addEventListener('click', () => {
-            if (karaokeModal.classList.contains('show')) { karaokeModal.classList.remove('show'); }
-            else { if (currentReadingList.length > 0 && currentReadingIndex < currentReadingList.length) { let texto = currentReadingList[currentReadingIndex]; mostrarKaraoke(texto); } else { alert("Inicia la reproducción para ver la lectura asistida."); } }
-        });
-        closeKaraoke.addEventListener('click', () => karaokeModal.classList.remove('show'));
-
-        // ==== DROPDOWN Y MODALES ====
-        document.getElementById('dropdownBtn').addEventListener('click', e => { e.stopPropagation(); document.getElementById('dropdownMenu').classList.toggle('show'); });
-        document.addEventListener('click', () => document.getElementById('dropdownMenu').classList.remove('show'));
-        document.getElementById('btnSumula').addEventListener('click', () => document.getElementById('sumulaModal').classList.add('show'));
-        document.getElementById('closeSumulaModal').addEventListener('click', () => document.getElementById('sumulaModal').classList.remove('show'));
-        document.getElementById('cancelSumula').addEventListener('click', () => document.getElementById('sumulaModal').classList.remove('show'));
-        document.getElementById('processSumula').addEventListener('click', async () => {
-            try {
-                let text = '';
-                const file = document.getElementById('fileSumulaInput').files[0];
-                if (file) { text = await file.text(); }
-                else if (document.getElementById('pastedTextSumula').value.trim()) { text = document.getElementById('pastedTextSumula').value; }
-                else { alert('Sube archivo o pega texto'); return; }
-                textarea.value = text; pushHistorial(); guardarContenido(); generarMapa();
-                document.getElementById('sumulaModal').classList.remove('show');
-            } catch(e) { alert('Error: ' + e.message); }
-        });
-        document.getElementById('btnCorolario').addEventListener('click', () => {
-            const corolario = `# Corolario Pedagógico: El Sendero Esencial del Iniciado\n## ¿Qué es?\n- Síntesis didáctica de las enseñanzas.\n## ¿Para qué sirve?\n- Para ser usado como guía práctica.\n## Características\n### La Fundación: El Maestro y el Naam\n#### Detalles\n- Sin un Maestro Perfecto es imposible recibir el Naam.\n##### Ejemplos\n- "El Maestro es quien tiene que dar."\n###### Conclusión del tema\n- El conocimiento se obtiene de la Gracia del Maestro.\n####### Fuentes Bibliográficas\n- Enseñanzas de Sant Sadhu Ram Ji.`;
-            textarea.value = corolario; pushHistorial(); guardarContenido(); generarMapa();
-        });
-        document.getElementById('btnConfig').addEventListener('click', () => document.getElementById('configModal').classList.add('show'));
-        document.getElementById('closeConfigModal').addEventListener('click', () => document.getElementById('configModal').classList.remove('show'));
-        document.getElementById('saveConfig').addEventListener('click', () => { localStorage.setItem('nexus_logo', document.getElementById('logoFilename').value); document.getElementById('configModal').classList.remove('show'); });
-        document.getElementById('btnAPA').addEventListener('click', () => document.getElementById('apaModal').classList.add('show'));
-        document.getElementById('closeApaModal').addEventListener('click', () => document.getElementById('apaModal').classList.remove('show'));
-        document.getElementById('saveAPA').addEventListener('click', () => { localStorage.setItem('nexus_apa', JSON.stringify({ author: document.getElementById('apaAuthor').value, title: document.getElementById('apaTitle').value, date: document.getElementById('apaDate').value })); document.getElementById('apaModal').classList.remove('show'); });
-
-        // ==== INICIALIZACIÓN ====
-        cargarContenido(); aplicarTema(); pushHistorial(); generarMapa();
-        setInterval(() => { if (textarea.value !== historial[historialPos]) { pushHistorial(); guardarContenido(); } }, 2000);
-        window.addEventListener('error', function(e) { console.error('Error capturado:', e.message); });
-        } catch(e) {
-            console.error('Error de inicialización:', e);
-            // Si hay un error, mostrar un mensaje en el editor
-            document.getElementById('contenido').value = "# Error de carga\n\n" + e.message;
-        }
     })();
     </script>
 </body>
