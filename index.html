@@ -924,7 +924,7 @@ h+='})();';
 h+=tagScriptClose;
 h+='</body></html>';
 descargarArchivo(new Blob([h],{type:'text/html;charset=utf-8'}),slug(titulo)+'.html');
-currentReadingSpan.textContent='✅ HTML con comandos exportado';
+currentReadingSpan.textContent='✅ HTML exportado con comandos';
 });
 
 document.getElementById('exportarTxt').addEventListener('click',function(){descargarArchivo(new Blob([textarea.value],{type:'text/plain'}),slug(obtenerTitulo())+'.txt');});
@@ -950,46 +950,12 @@ descargarArchivo(new Blob([l.join('\n')],{type:'text/plain'}),slug(obtenerTitulo
 });
 
 document.getElementById('vistaPreviaHtml').addEventListener('click',function(){
-var texto=textarea.value;
-if(!texto.trim()){alert('No hay contenido para previsualizar');return;}
-var titulo=obtenerTitulo();
-var html='<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>'+titulo+'</title><style>';
-html+='body{font-family:"Segoe UI",sans-serif;padding:20px;background:#f4f7fc;color:#212529}';
-html+='h2{margin-top:0}.card-nodo{border-left:5px solid #3498db;padding:10px 14px;margin-bottom:6px;cursor:pointer;background:white;border-radius:8px;box-shadow:0 1px 4px rgba(0,0,0,.05)}';
-html+='.card-nodo:hover{background:#f0f5fa}.children{margin-left:20px;border-left:2px dashed #ccc;padding-left:10px;margin-top:6px}';
-html+='.collapsed{display:none}.level-0{background:#fef5e7;border-left-color:#e67e22}.level-1{border-left-color:#3498db}.level-2{border-left-color:#2ecc71}.level-3{border-left-color:#9b59b6}.level-4{border-left-color:#e74c3c}';
-html+='.icono-toggle{font-size:.8rem;opacity:.6;margin-left:8px}';
-html+='</style></head><body>';
-html+='<h2>'+titulo+'</h2><div id="m"></div>';
-html+='<script type="text/plain" id="raw">'+texto.replace(/<\//g,'<\\/')+'<\/script>';
-html+='<script>(function(){';
-html+='var t=document.getElementById("raw").textContent;';
-html+='function p(t){var l=t.split("\\n"),n=[],s=[],i=1;';
-html+='for(var k=0;k<l.length;k++){var a=l[k].trim();if(!a)continue;var v=-1,e=a;';
-html+='if(a.indexOf("# ")===0){v=0;e=a.slice(2)}else if(a.indexOf("## ")===0){v=1;e=a.slice(3)}else if(a.indexOf("### ")===0){v=2;e=a.slice(4)}';
-html+='else if(a.indexOf("#### ")===0){v=3;e=a.slice(5)}else if(a.indexOf("- ")===0||a.indexOf("* ")===0){v=s.length?s[s.length-1].v+1:1;e=a.slice(2)}';
-html+='else{v=s.length?s[s.length-1].v+1:1;e=a}';
-html+='while(s.length&&s[s.length-1].v>=v)s.pop();';
-html+='var pid=s.length?s[s.length-1].id:null;n.push({id:i,v:v,e:e,p:pid});s.push({id:i,v:v});i++}';
-html+='var hm={};n.forEach(function(x){hm[x.id]=[]});n.forEach(function(x){if(x.p)hm[x.p].push(x.id)});';
-html+='return{n:n,hm:hm,r:n.filter(function(x){return !x.p})}}';
-html+='var d=p(t);var nm={};d.n.forEach(function(x){nm[x.id]=x});';
-html+='function c(id){var x=nm[id];if(!x)return null;var h=d.hm[id]||[];var e=document.createElement("div");';
-html+='e.className="card-nodo level-"+Math.min(x.v,4);';
-html+='var sp=document.createElement("span");sp.textContent=x.e;e.appendChild(sp);';
-html+='if(h.length){var ic=document.createElement("span");ic.className="icono-toggle";ic.textContent="▶";e.appendChild(ic);';
-html+='var cn=document.createElement("div");cn.className="children collapsed";';
-html+='h.forEach(function(y){var z=c(y);if(z)cn.appendChild(z)});e.appendChild(cn);';
-html+='e.onclick=function(){cn.classList.toggle("collapsed");ic.textContent=cn.classList.contains("collapsed")?"▶":"▼"}}';
-html+='return e}';
-html+='var m=document.getElementById("m");d.r.forEach(function(x){var z=c(x.id);if(z)m.appendChild(z)});';
-html+='})();<\/script></body></html>';
+document.getElementById('exportarHtml').click();
+setTimeout(function(){
 var w=window.open('','_blank');
-if(!w){alert('⚠️ Activa las ventanas emergentes para ver la vista previa');return;}
-w.document.open();
-w.document.write(html);
-w.document.close();
-currentReadingSpan.textContent='👁 Vista previa abierta';
+if(!w){alert('⚠️ Activa las ventanas emergentes');return;}
+w.location.href=URL.createObjectURL(new Blob([h],{type:'text/html'}));
+},300);
 });
 
 aplicarTema();aplicarLogo();pushHistorial();generarMapa();
