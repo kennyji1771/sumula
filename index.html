@@ -465,6 +465,7 @@ h1{font-size:1.5rem;margin:0 0 16px}
 .btn-loop.active{background:#27ae60;box-shadow:inset 0 0 0 2px #fff}
 .btn-karaoke{background:#3498db}.btn-karaoke.active{background:#2980b9;box-shadow:inset 0 0 0 2px #fff}
 .btn-accion{background:#5d6d8a}.btn-accion.peligro{background:#e67e22}
+.btn-settings{background:#c9a227;color:#0a1128 !important;}
 .timer{font-family:monospace;font-weight:bold;font-size:15px;color:var(--text);background:var(--editor-bg);padding:6px 12px;border-radius:8px;border:1px solid var(--border);min-width:68px;text-align:center}
 select{padding:7px 12px;border-radius:8px;border:1px solid var(--border);font-size:13px;background:var(--editor-bg);color:var(--text);cursor:pointer;max-width:220px}
 select option{background-color:#fff;color:#212529}
@@ -527,6 +528,8 @@ body.dark select option{background-color:#1a1a2e;color:#e8ecf5}
 .sintesis-textarea{width:100%;min-height:340px;font-family:'Fira Code',monospace;font-size:12px;line-height:1.65;padding:14px;border:1px solid var(--border);border-radius:10px;background:var(--editor-bg);color:var(--text);resize:vertical}
 .btn-sumula-accion{background:linear-gradient(135deg,#c9a227,#9b59b6);color:#fff;border:none;border-radius:30px;padding:8px 20px;font-weight:700;cursor:pointer;box-shadow:0 4px 14px rgba(155,89,182,.35);transition:.18s}
 .btn-sumula-accion:hover{transform:translateY(-1px);filter:brightness(1.1)}
+.btn-guia{display:inline-block;background:rgba(52,152,219,.15);color:#3498db;padding:8px 12px;border-radius:8px;text-decoration:none;font-weight:700;font-size:13px;margin-top:10px;border:1px dashed #3498db;width:100%;text-align:center}
+.btn-guia:hover{background:rgba(52,152,219,.3);color:#fff}
 @media(max-width:768px){body{padding:10px}.toolbar button{padding:6px 10px;font-size:13px}h1{font-size:1.2rem}#karaokeBody{padding:16px 20px;font-size:1.3rem}}
 </style>
 </head>
@@ -544,6 +547,7 @@ __PRISMA_INTRO__
   <button class="btn-karaoke" id="btnKaraoke" title="Lectura Asistida (K)">📖</button>
   <select id="voiceSelect" title="Voz"></select>
   <span class="timer" id="timerDisplay">00:00</span>
+  <button class="btn-settings" id="btnConfigExp" title="Configurar API Key">⚙️</button>
   <span class="status" id="status">Listo</span>
 </div>
 
@@ -569,6 +573,30 @@ __PRISMA_INTRO__
 </div>
 
 <div id="mapa"></div>
+
+<div class="modal-overlay" id="configExpModal">
+  <div class="modal-content">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+      <h5>⚙️ Configuración del Documento</h5>
+      <button id="closeConfigExp" class="close-x">&times;</button>
+    </div>
+    <div class="mb-3">
+      <label>API Key de Gemini AI (✨)</label>
+      <input type="password" class="form-control" id="geminiKeyExp" placeholder="Pega tu clave aquí (AIza...)" style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--border);background:var(--editor-bg);color:var(--text);margin-bottom:8px;">
+      <a href="https://aistudio.google.com/app/apikey" target="_blank" class="btn-guia">🔗 Obtener mi API Key Gratis (Paso a Paso)</a>
+      <div style="font-size:11px;color:var(--text-sec);margin-top:8px;line-height:1.4;">
+        <b>¿Cómo obtenerla?</b><br>
+        1. Haz clic en el enlace azul de arriba.<br>
+        2. Inicia sesión con tu cuenta de Google.<br>
+        3. Haz clic en "Create API key" (Crear clave).<br>
+        4. Copia la clave generada y pégala aquí.
+      </div>
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:14px;">
+      <button class="btn-accion" id="saveConfigExp" style="background:#3498db;padding:10px 20px;">Guardar Clave</button>
+    </div>
+  </div>
+</div>
 
 <div class="modal-overlay" id="sintesisModal">
   <div class="modal-content" style="max-width:880px;width:94%;">
@@ -624,7 +652,6 @@ __PRISMA_INTRO__
 </div>
 
 <script>var raw = __SUMMULA_CONTENT__;</script>
-<script>var geminiApiKey = "__PRISMA_GEMINI_KEY__";</script>
 <script>
 (function(){
 'use strict';
@@ -641,7 +668,7 @@ var listaNodos=[],indiceActual=0,parsed=null;
 var fontSizeKaraoke=1.7;
 
 var slug=(document.title||'doc').replace(/[^a-z0-9]/gi,'_').substring(0,40);
-var K={theme:'nx_'+slug+'_th',sel:'nx_'+slug+'_sel',coll:'nx_'+slug+'_col',voice:'nx_'+slug+'_vo',rate:'nx_'+slug+'_ra',pitch:'nx_'+slug+'_pi',caps:'nx_'+slug+'_cp'};
+var K={theme:'nx_'+slug+'_th',sel:'nx_'+slug+'_sel',coll:'nx_'+slug+'_col',voice:'nx_'+slug+'_vo',rate:'nx_'+slug+'_ra',pitch:'nx_'+slug+'_pi',caps:'nx_'+slug+'_cp', gemini:'nexus_gemini_key'};
 function lsGet(k,d){try{var v=localStorage.getItem(k);return v===null?d:v;}catch(e){return d;}}
 function lsSet(k,v){try{localStorage.setItem(k,v);}catch(e){}}
 function loadSet(k){try{var v=JSON.parse(lsGet(k,'[]'));return new Set(Array.isArray(v)?v.map(String):[]);}catch(e){return new Set();}}
@@ -954,6 +981,19 @@ function aplicarTema(){
   document.body.classList.toggle('dark',dark);btnTheme.textContent=dark?'☀️ Claro':'🌙 Oscuro';
 }
 
+/* Configuración Export */
+var configExpModal=$('configExpModal');
+$('btnConfigExp').addEventListener('click',function(){
+  $('geminiKeyExp').value = lsGet(K.gemini,'');
+  configExpModal.classList.add('show');
+});
+$('closeConfigExp').addEventListener('click',function(){configExpModal.classList.remove('show');});
+$('saveConfigExp').addEventListener('click',function(){
+  var val = $('geminiKeyExp').value.trim();
+  lsSet(K.gemini, val);
+  configExpModal.classList.remove('show');
+});
+
 btnPlay.addEventListener('click',togglePlayPause);
 btnStop.addEventListener('click',detenerLectura);
 btnLoop.addEventListener('click',function(){bucleActivo=!bucleActivo;btnLoop.classList.toggle('active',bucleActivo);btnLoop.textContent=bucleActivo?'🔁✅':'🔁';});
@@ -1028,16 +1068,17 @@ kLoopCap.addEventListener('click',function(){
 kFontUp.addEventListener('click',function(){fontSizeKaraoke=Math.min(4,fontSizeKaraoke+0.2);karaokeBody.style.fontSize=fontSizeKaraoke+'rem';});
 kFontDown.addEventListener('click',function(){fontSizeKaraoke=Math.max(0.8,fontSizeKaraoke-0.2);karaokeBody.style.fontSize=fontSizeKaraoke+'rem';});
 
-/* ============================================================
-   SÍNTESIS CON GEMINI AI
-   ============================================================ */
+/* SÍNTESIS CON GEMINI EN EXPORT */
 async function generarSintesisCapturas(){
   if(!capturas.length) return null;
-  if(!geminiApiKey || geminiApiKey === '__PRISMA_GEMINI_KEY__' || geminiApiKey === '') {
-    alert('⚠️ Para usar la IA de Gemini, primero debes configurar tu API Key en el engranaje ⚙️ -> Ajustes Prisma.');
+  
+  var geminiApiKey = lsGet(K.gemini, '');
+  if(!geminiApiKey) {
+    alert('⚠️ Para usar la IA, primero debes configurar tu API Key en el botón ⚙️ (arriba a la derecha).');
+    $('btnConfigExp').click();
     return null;
   }
-  
+
   var titulo = (document.title||'Documento').replace(/^▶\s*/,'').trim();
   var capturasTexto = capturas.map((c, i) => `[Captura ${i+1}]: "${c}"`).join('\n\n');
   
@@ -1061,13 +1102,7 @@ async function generarSintesisCapturas(){
         'X-goog-api-key': geminiApiKey
       },
       body: JSON.stringify({
-        contents: [
-          {
-            parts: [
-              { text: prompt }
-            ]
-          }
-        ]
+        contents: [{ parts: [{ text: prompt }] }]
       })
     });
 
@@ -1730,9 +1765,7 @@ fontSizeKaraoke=Math.max(0.8,fontSizeKaraoke-0.2);
 karaokeBody.style.fontSize=fontSizeKaraoke+'rem';
 });
 
-/* ============================================================
-   SÍNTESIS CON GEMINI AI (Fábrica)
-   ============================================================ */
+/* SÍNTESIS CON GEMINI AI (Fábrica) */
 async function generarSintesisCapturas(){
   if(!capturas.length) return null;
   
@@ -1917,7 +1950,6 @@ function buildStandaloneHTML(texto,titulo){
   var prismaLogo=localStorage.getItem(STORAGE_PRISMA_LOGO)||'';
   var prismaBanner=localStorage.getItem(STORAGE_PRISMA_BANNER)||'';
   var prismaIntro=localStorage.getItem(STORAGE_PRISMA_INTRO)||'';
-  var geminiKey=localStorage.getItem(STORAGE_GEMINI_KEY)||'';
 
   var logoHtml = prismaLogo ? '<img src="'+escAttr(prismaLogo)+'" class="brand-logo" alt="PRISMA">' : '';
   var bannerStyle = prismaBanner
@@ -1933,8 +1965,7 @@ function buildStandaloneHTML(texto,titulo){
     .split('__SUMMULA_THEME__').join(isDark?'dark':'light')
     .split('__PRISMA_LOGO__').join(logoHtml)
     .split('__PRISMA_BANNER_STYLE__').join(bannerStyle)
-    .split('__PRISMA_INTRO__').join(introHtml)
-    .split('__PRISMA_GEMINI_KEY__').join(geminiKey);
+    .split('__PRISMA_INTRO__').join(introHtml);
 }
 
 document.getElementById('exportarHtml').addEventListener('click',function(){
