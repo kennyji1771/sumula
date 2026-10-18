@@ -1028,39 +1028,93 @@ kFontDown.addEventListener('click',function(){fontSizeKaraoke=Math.max(0.8,fontS
 /* FIX: Síntesis de Capturas en el Export */
 function generarSintesisCapturas(){
   if(!capturas.length) return null;
-  var titulo = (document.title||'Documento').replace(/^▶\s*/,'').trim();
+  var titulo = (tituloDin.textContent||'Documento').replace(/^▶\s*/,'').trim();
   var fecha = new Date().toLocaleString('es-ES');
   var n = capturas.length;
-  var largas=0,medias=0,cortas=0;
-  capturas.forEach(function(c){if(c.length<80) cortas++; else if(c.length<200) medias++; else largas++;});
+
+  // 1. Algoritmo de extracción de palabras clave (NLP básico)
+  var stopWords = ['el','la','los','las','un','una','unos','unas','y','o','de','del','en','a','con','por','para','que','es','son','se','su','sus','al','lo','como','más','pero','si','no','este','esta','estos','estas','ha','han','fue','ser','tiene','tienen','sobre','entre','cuando','donde'];
+  var frecuencias = {};
+  
+  capturas.forEach(function(cap){
+    var palabras = cap.toLowerCase().replace(/[.,;:!?¡¿"()]/g,'').split(/\s+/);
+    palabras.forEach(function(p){
+      if(p.length > 4 && !stopWords.includes(p)){
+        frecuencias[p] = (frecuencias[p] || 0) + 1;
+      }
+    });
+  });
+
+  // Ordenar palabras clave por frecuencia
+  var keywords = Object.keys(frecuencias).sort(function(a,b){ return frecuencias[b] - frecuencias[a]; }).slice(0, 5);
+  var temaPrincipal = keywords.length > 0 ? keywords[0] : 'el tema central';
+  var temasSecundarios = keywords.slice(1, 4).join(', ');
+
+  // 2. Construcción del Texto Enriquecido Correlativo
   var txt='';
   txt+='═══════════════════════════════════════════════════════════\n';
-  txt+='  SÍNTESIS ANALÍTICA DE CAPTURAS\n  Documento: '+titulo+'\n═══════════════════════════════════════════════════════════\n\n';
-  txt+='📅 Fecha de generación: '+fecha+'\n📊 Total de capturas: '+n+'\n';
-  txt+='🔍 Distribución: '+largas+' extensas · '+medias+' medias · '+cortas+' breves\n\n';
-  txt+='─────────────────────────────────────────────────────────\n  INTRODUCCIÓN\n─────────────────────────────────────────────────────────\n\n';
-  txt+='El presente documento constituye una síntesis analítica de '+n+' fragmento'+(n===1?'':'s')+' seleccionado'+(n===1?'':'s')+' durante la sesión de lectura asistida del documento «'+titulo+'». ';
-  txt+='A través de un proceso de lectura selectiva y atenta, se han identificado los pasajes de mayor densidad conceptual, organizados a continuación en orden de aparición para preservar la coherencia argumentativa del texto original. ';
-  txt+='Esta síntesis no sustituye al documento completo, sino que ofrece una ruta de estudio optimizada para la consolidación del conocimiento.\n\n';
-  txt+='─────────────────────────────────────────────────────────\n  DESARROLLO ANALÍTICO\n─────────────────────────────────────────────────────────\n\n';
-  capturas.forEach(function(c,i){
-    txt+='【 CAPTURA '+(i+1)+' / '+n+' 】  (Extensión: '+c.length+' caracteres · Palabras: '+c.trim().split(/\s+/).length+')\n\n';
-    txt+=c+'\n\n─────────────────────────────────────────────────────────\n\n';
-  });
-  txt+='─────────────────────────────────────────────────────────\n  CONCLUSIÓN PEDAGÓGICA\n─────────────────────────────────────────────────────────\n\n';
-  txt+='El conjunto de '+n+' captura'+(n===1?'':'s')+' evidencia'+(n===1?'':'n')+' un recorrido de lectura coherente y estructurado, ';
-  if(largas>0) txt+='con predominio de fragmentos de desarrollo extenso ('+largas+'), ';
-  txt+='que articula'+(n===1?'':'n')+' los conceptos centrales del documento con sus aplicaciones prácticas. ';
-  txt+='Se recomienda revisar estos fragmentos en la secuencia presentada, prestando especial atención a las relaciones semánticas entre capturas consecutivas, para construir una comprensión global sólida y transferible del material estudiado.\n\n';
-  txt+='─────────────────────────────────────────────────────────\n  Generado por Nexus Acelerador · PRISMA\n─────────────────────────────────────────────────────────\n';
+  txt+='  SÍNTESIS ANALÍTICA Y CORRELATIVA\n  Documento: '+titulo+'\n';
+  txt+='═══════════════════════════════════════════════════════════\n\n';
+  txt+='📅 Fecha: '+fecha+' | 📊 Total de capturas analizadas: '+n+'\n\n';
 
-  var sum='# Síntesis de Capturas · '+titulo+'\n\n## Metadatos\n- Fecha: '+fecha+'\n- Total de capturas: '+n+'\n- Documento de origen: '+titulo+'\n- Herramienta: Nexus Acelerador · PRISMA\n\n## Introducción\n- Propósito: síntesis analítica de fragmentos seleccionados\n- Método: lectura selectiva y organización en orden de aparición\n- Alcance: '+largas+' capturas extensas, '+medias+' medias, '+cortas+' breves\n\n## Desarrollo Analítico\n';
+  txt+='─────────────────────────────────────────────────────────\n';
+  txt+='  INTRODUCCIÓN PEDAGÓGICA\n';
+  txt+='─────────────────────────────────────────────────────────\n\n';
+  txt+='El presente texto constituye una síntesis analítica que busca correlacionar los '+n+' fragmentos extraídos del documento «'+titulo+'». ';
+  txt+='A través de un análisis de recurrencia conceptual, se ha identificado que el eje central del discurso gira en torno a **'+temaPrincipal+'**, ';
+  if(temasSecundarios) txt+='complementado por conceptos como **'+temasSecundarios+'**. ';
+  txt+='A continuación, se presenta una lectura integradora que no solo enumera las capturas, sino que teje las conexiones lógicas entre ellas.\n\n';
+
+  txt+='─────────────────────────────────────────────────────────\n';
+  txt+='  DESARROLLO CORRELATIVO\n';
+  txt+='─────────────────────────────────────────────────────────\n\n';
+
+  // 3. Correlación de capturas
   capturas.forEach(function(c,i){
-    sum+='### Captura '+(i+1)+'\n';
-    c.split(/\n/).forEach(function(linea){if(linea.trim()) sum+='- '+linea.trim()+'\n';});
-    sum+='\n';
+    txt+='【 CONCEPTO '+(i+1)+' 】\n';
+    
+    // Generar un pequeño análisis contextual según la posición
+    if (i === 0) {
+      txt+='Como punto de partida, el texto establece que: "'+c.trim()+'"\n';
+      txt+='*Análisis:* Este fragmento sienta las bases sobre '+temaPrincipal+'. ';
+    } else if (i === capturas.length - 1 && n > 1) {
+      txt+='Para concluir el recorrido, se destaca que: "'+c.trim()+'"\n';
+      txt+='*Análisis:* Esta idea funciona como corolario del texto, reforzando la aplicación práctica de los conceptos previos. ';
+    } else {
+      txt+='En un nivel de mayor profundidad, la lectura revela que: "'+c.trim()+'"\n';
+      txt+='*Análisis:* Este pasaje dialoga directamente con las capturas anteriores. ';
+      // Buscar si comparte palabras con la captura anterior
+      var shared = false;
+      var prevWords = capturas[i-1].toLowerCase().split(/\s+/);
+      var currWords = c.toLowerCase().split(/\s+/);
+      for(var w=0; w<currWords.length; w++){
+        if(currWords[w].length > 4 && prevWords.includes(currWords[w])) { shared = true; break; }
+      }
+      if(shared) txt+='Se observa una clara continuidad temática con el fragmento previo, profundizando en las implicaciones prácticas del mismo. ';
+      else txt+='Aquí se introduce un matiz o una ramificación del argumento principal, aportando una perspectiva complementaria. ';
+    }
+    txt+='\n\n─────────────────────────────────────────────────────────\n\n';
   });
-  sum+='## Conclusión Pedagógica\n- Recorrido de lectura coherente a través de '+n+' fragmento'+(n===1?'':'s')+'\n- Énfasis en los conceptos centrales del documento\n- Relaciones semánticas entre capturas consecutivas\n- Recomendación: revisión secuencial para consolidación global\n';
+
+  txt+='─────────────────────────────────────────────────────────\n';
+  txt+='  CONCLUSIÓN DE SÍNTESIS\n';
+  txt+='─────────────────────────────────────────────────────────\n\n';
+  txt+='A modo de cierre pedagógico, la integración de estos '+n+' fragmentos evidencia que la obra «'+titulo+'» construye un argumento sólido alrededor de **'+temaPrincipal+'**. ';
+  txt+='El lector que logre conectar estos puntos no solo comprenderá las ideas aisladas, sino la arquitectura mental completa que el autor propone. ';
+  txt+='Se sugiere usar estos fragmentos como disparadores para la reflexión activa o la escritura de un ensayo propio.\n\n';
+
+  // 4. Construcción de la SÚMULA (Markdown)
+  var sum='# Síntesis Correlativa · '+titulo+'\n\n';
+  sum+='## Eje Temático Principal\n- **'+temaPrincipal.charAt(0).toUpperCase()+temaPrincipal.slice(1)+'**\n';
+  sum+='- Temas secundarios: '+temasSecundarios+'\n\n';
+  sum+='## Relaciones Lógicas Encontradas\n';
+  capturas.forEach(function(c,i){
+    sum+='### Fragmento '+(i+1)+'\n';
+    sum+='> "'+c.trim()+'"\n\n';
+    sum+='- **Conexión:** '+(i===0?'Establece el marco inicial del argumento.':'Se articula con los conceptos previos para dar forma a la tesis central.')+'\n\n';
+  });
+  sum+='## Conclusión\n- La lectura correlacionada demuestra que el documento no es un conjunto de ideas aisladas, sino un sistema donde cada parte explica y sostiene a las demás.\n';
+
   return {txt:txt, sumula:sum, titulo:titulo};
 }
 var sintesisModal=$('sintesisModal'),sintesisTxt=$('sintesisTxt'),sintesisSumula=$('sintesisSumula'),tabTxt=$('tabTxt'),tabSumula=$('tabSumula');
