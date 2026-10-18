@@ -351,7 +351,7 @@ select.form-select:focus,input.form-control:focus,textarea.form-control:focus{ou
       <div class="mb-2"><label>URL del Logo (header)</label><input type="text" class="form-control" id="prismaLogo" placeholder="https://tu-logo.png"></div>
       <div class="mb-2"><label>URL del Banner (fondo del header)</label><input type="text" class="form-control" id="prismaBanner" placeholder="https://tu-banner.jpg"></div>
       <div class="mb-2"><label>Texto de Introducción de Prisma</label><textarea class="form-control" id="prismaIntro" rows="2" placeholder="Se inyectará al inicio..."></textarea></div>
-      <div class="mb-2"><label>API Key de DeepSeek AI (🐳)</label><input type="password" class="form-control" id="prismaDeepseekKey" placeholder="sk-..."></div>
+      <div class="mb-2"><label>API Key de Gemini AI (✨)</label><input type="password" class="form-control" id="prismaGeminiKey" placeholder="AIza..."></div>
     </div>
     <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:14px;">
       <button class="btn btn-outline-light" id="cancelConfig" style="color:var(--text);border-color:var(--border-light)">Cancelar</button>
@@ -377,14 +377,14 @@ select.form-select:focus,input.form-control:focus,textarea.form-control:focus{ou
 <div class="modal-overlay" id="sintesisModal">
   <div class="modal-content" style="max-width:880px;width:94%;">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-      <h5>🐳 Síntesis Pedagógica con DeepSeek</h5>
+      <h5>✨ Síntesis Pedagógica con Gemini</h5>
       <button id="closeSintesisModal" class="close-x">&times;</button>
     </div>
     <div class="sintesis-tabs">
       <button id="tabTxt" class="active">📄 Texto Enriquecido</button>
       <button id="tabSumula">📋 SÚMULA (Markdown)</button>
     </div>
-    <textarea id="sintesisTxt" class="sintesis-textarea" readonly placeholder="Generando análisis profundo con DeepSeek..."></textarea>
+    <textarea id="sintesisTxt" class="sintesis-textarea" readonly placeholder="Generando análisis profundo con Gemini..."></textarea>
     <textarea id="sintesisSumula" class="sintesis-textarea" readonly style="display:none" placeholder="Generando SÚMULA..."></textarea>
     <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:14px;flex-wrap:wrap;">
       <button id="sintesisDownload" class="btn-sumula-accion">📥 Descargar .txt</button>
@@ -417,7 +417,7 @@ select.form-select:focus,input.form-control:focus,textarea.form-control:focus{ou
     <div id="capturasHeader">
       <span>📋 Capturas (<span id="capturasCount">0</span>)</span>
       <div style="display:flex;gap:5px;flex-wrap:wrap">
-        <button id="capSintesis" class="violet" title="Generar síntesis con DeepSeek AI">🐳 Sintetizar (IA)</button>
+        <button id="capSintesis" class="violet" title="Generar síntesis con Gemini AI">✨ Sintetizar (IA)</button>
         <button id="capDownload" class="primary">📥 .txt</button>
         <button id="capCopy" class="primary">📋 Copiar</button>
         <button id="capClear" class="danger">🗑</button>
@@ -573,14 +573,14 @@ __PRISMA_INTRO__
 <div class="modal-overlay" id="sintesisModal">
   <div class="modal-content" style="max-width:880px;width:94%;">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-      <h5>🐳 Síntesis Pedagógica con DeepSeek</h5>
+      <h5>✨ Síntesis Pedagógica con Gemini</h5>
       <button id="closeSintesisModal" class="close-x">&times;</button>
     </div>
     <div class="sintesis-tabs">
       <button id="tabTxt" class="active">📄 Texto Enriquecido</button>
       <button id="tabSumula">📋 SÚMULA (Markdown)</button>
     </div>
-    <textarea id="sintesisTxt" class="sintesis-textarea" readonly placeholder="Generando análisis profundo con DeepSeek..."></textarea>
+    <textarea id="sintesisTxt" class="sintesis-textarea" readonly placeholder="Generando análisis profundo con Gemini..."></textarea>
     <textarea id="sintesisSumula" class="sintesis-textarea" readonly style="display:none" placeholder="Generando SÚMULA..."></textarea>
     <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:14px;flex-wrap:wrap;">
       <button id="sintesisDownload" class="btn-sumula-accion">📥 Descargar .txt</button>
@@ -613,7 +613,7 @@ __PRISMA_INTRO__
     <div id="capturasHeader">
       <span>📋 Capturas (<span id="capturasCount">0</span>)</span>
       <div style="display:flex;gap:5px;flex-wrap:wrap">
-        <button id="capSintesis" class="violet">🐳 Sintetizar (IA)</button>
+        <button id="capSintesis" class="violet">✨ Sintetizar (IA)</button>
         <button id="capDownload">📥 .txt</button>
         <button id="capCopy">📋 Copiar</button>
         <button class="danger" id="capClear">🗑</button>
@@ -624,7 +624,7 @@ __PRISMA_INTRO__
 </div>
 
 <script>var raw = __SUMMULA_CONTENT__;</script>
-<script>var deepseekApiKey = "__PRISMA_DEEPSEEK_KEY__";</script>
+<script>var geminiApiKey = "__PRISMA_GEMINI_KEY__";</script>
 <script>
 (function(){
 'use strict';
@@ -1029,17 +1029,16 @@ kFontUp.addEventListener('click',function(){fontSizeKaraoke=Math.min(4,fontSizeK
 kFontDown.addEventListener('click',function(){fontSizeKaraoke=Math.max(0.8,fontSizeKaraoke-0.2);karaokeBody.style.fontSize=fontSizeKaraoke+'rem';});
 
 /* ============================================================
-   SÍNTESIS CON DEEPSEEK AI
+   SÍNTESIS CON GEMINI AI
    ============================================================ */
 async function generarSintesisCapturas(){
   if(!capturas.length) return null;
-  if(!deepseekApiKey || deepseekApiKey === '__PRISMA_DEEPSEEK_KEY__') {
-    alert('⚠️ Para usar la IA de DeepSeek, primero debes configurar tu API Key en el engranaje ⚙️ -> Ajustes Prisma.');
+  if(!geminiApiKey || geminiApiKey === '__PRISMA_GEMINI_KEY__' || geminiApiKey === '') {
+    alert('⚠️ Para usar la IA de Gemini, primero debes configurar tu API Key en el engranaje ⚙️ -> Ajustes Prisma.');
     return null;
   }
   
   var titulo = (document.title||'Documento').replace(/^▶\s*/,'').trim();
-  var fecha = new Date().toLocaleString('es-ES');
   var capturasTexto = capturas.map((c, i) => `[Captura ${i+1}]: "${c}"`).join('\n\n');
   
   var prompt = `Actúa como un experto pedagogo, teólogo y analista de textos. Tu tarea es realizar una síntesis profunda y correlativa de los siguientes fragmentos extraídos del documento titulado "${titulo}".\n\n` +
@@ -1047,38 +1046,39 @@ async function generarSintesisCapturas(){
   `1. NO te limites a enumerar o copiar. Debes hilar un argumento lógico que conecte las ideas centrales de todas las capturas.\n` +
   `2. Contextualiza el contenido. Si el texto habla de justicia, poder o enseñanzas, haz referencias cruzadas con conceptos filosóficos, teológicos o pedagógicos más amplios.\n` +
   `3. Cita explícitamente el número de captura (ej. "como se ve en la Captura 2...") cuando uses sus ideas.\n` +
-  `4. Aclara en la conclusión que esta síntesis fue generada por DeepSeek AI.\n\n` +
+  `4. Aclara en la conclusión que esta síntesis fue generada por Gemini AI.\n\n` +
   `Aquí están las capturas:\n${capturasTexto}\n\n` +
   `Devuelve el resultado EXACTAMENTE con este formato (sin añadir texto extra antes o después):\n` +
   `[INICIO_TEXTO_ENRIQUECIDO]\n(Aquí redacta un análisis profundo, pedagógico y fluido, estructurado en párrafos con emojis contextuales)\n[FIN_TEXTO_ENRIQUECIDO]\n` +
   `[INICIO_SUMULA]\n(Aquí redacta la SÚMULA en formato Markdown: # Título, ## Conceptos, - Ideas clave, usando la misma correlación lógica)\n[FIN_SUMULA]`;
 
   try {
-    var response = await fetch('https://api.deepseek.com/chat/completions', {
+    var url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent`;
+    var response = await fetch(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': 'Bearer ' + deepseekApiKey
+        'X-goog-api-key': geminiApiKey
       },
       body: JSON.stringify({
-        model: 'deepseek-chat',
-        messages: [
-          { role: 'system', content: 'Eres un experto en análisis pedagógico y teológico. Redactas síntesis profundas correlacionando ideas.' },
-          { role: 'user', content: prompt }
-        ],
-        temperature: 0.7
+        contents: [
+          {
+            parts: [
+              { text: prompt }
+            ]
+          }
+        ]
       })
     });
 
     if (!response.ok) {
       var errData = await response.json();
-      throw new Error(errData.error?.message || 'Error en la API de DeepSeek');
+      throw new Error(errData.error?.message || 'Error en la API de Gemini');
     }
 
     var data = await response.json();
-    var aiText = data.choices[0].message.content;
+    var aiText = data.candidates[0].content.parts[0].text;
 
-    // Parsear respuesta de la IA
     var txtMatch = aiText.match(/\[INICIO_TEXTO_ENRIQUECIDO\]([\s\S]*?)\[FIN_TEXTO_ENRIQUECIDO\]/);
     var sumMatch = aiText.match(/\[INICIO_SUMULA\]([\s\S]*?)\[FIN_SUMULA\]/);
 
@@ -1088,8 +1088,8 @@ async function generarSintesisCapturas(){
     return { txt: finalTxt, sumula: finalSum, titulo: titulo };
     
   } catch (error) {
-    console.error('DeepSeek Error:', error);
-    alert('❌ Error al conectar con DeepSeek AI: ' + error.message);
+    console.error('Gemini Error:', error);
+    alert('❌ Error al conectar con Gemini AI: ' + error.message);
     return null;
   }
 }
@@ -1098,9 +1098,8 @@ var sintesisModal=$('sintesisModal'),sintesisTxt=$('sintesisTxt'),sintesisSumula
 capSintesis.addEventListener('click',async function(){
   if(!capturas.length){alert('No hay capturas para sintetizar.');return;}
   
-  // UI Loading
-  sintesisTxt.value = '🐳 DeepSeek AI está analizando las capturas y correlacionando conceptos... Por favor espera.';
-  sintesisSumula.value = '🐳 Generando SÚMULA...';
+  sintesisTxt.value = '✨ Gemini AI está analizando las capturas y correlacionando conceptos... Por favor espera.';
+  sintesisSumula.value = '✨ Generando SÚMULA...';
   tabTxt.classList.add('active');tabSumula.classList.remove('active');
   sintesisTxt.style.display='block';sintesisSumula.style.display='none';
   sintesisModal.classList.add('show');
@@ -1123,7 +1122,7 @@ $('sintesisDownload').addEventListener('click',function(){
   if(!contenido){alert('Nada que descargar');return;}
   var ext=sintesisTxt.style.display!=='none'?'txt':'md';
   var blob=new Blob([contenido],{type:'text/plain;charset=utf-8'});var u=URL.createObjectURL(blob),a=document.createElement('a');
-  a.href=u;a.download='sintesis_deepseek_'+Date.now()+'.'+ext;document.body.appendChild(a);a.click();document.body.removeChild(a);
+  a.href=u;a.download='sintesis_gemini_'+Date.now()+'.'+ext;document.body.appendChild(a);a.click();document.body.removeChild(a);
   setTimeout(function(){URL.revokeObjectURL(u);},1000);
 });
 $('sintesisCopy').addEventListener('click',function(){
@@ -1219,7 +1218,7 @@ var STORAGE_AUTOSAVE='nexus_autosave';
 var STORAGE_PRISMA_LOGO='nexus_prisma_logo';
 var STORAGE_PRISMA_BANNER='nexus_prisma_banner';
 var STORAGE_PRISMA_INTRO='nexus_prisma_intro';
-var STORAGE_DEEPSEEK_KEY='nexus_deepseek_key';
+var STORAGE_GEMINI_KEY='nexus_gemini_key';
 
 async function activarMantenimiento(){
   if('wakeLock' in navigator){try{wakeLock=await navigator.wakeLock.request('screen');}catch(e){}}
@@ -1732,14 +1731,14 @@ karaokeBody.style.fontSize=fontSizeKaraoke+'rem';
 });
 
 /* ============================================================
-   SÍNTESIS CON DEEPSEEK AI (Fábrica)
+   SÍNTESIS CON GEMINI AI (Fábrica)
    ============================================================ */
 async function generarSintesisCapturas(){
   if(!capturas.length) return null;
   
-  var deepseekApiKey = localStorage.getItem(STORAGE_DEEPSEEK_KEY) || '';
-  if(!deepseekApiKey) {
-    alert('⚠️ Para usar la IA de DeepSeek, primero debes configurar tu API Key en el engranaje ⚙️ -> Ajustes Prisma.');
+  var geminiApiKey = localStorage.getItem(STORAGE_GEMINI_KEY) || '';
+  if(!geminiApiKey) {
+    alert('⚠️ Para usar la IA de Gemini, primero debes configurar tu API Key en el engranaje ⚙️ -> Ajustes Prisma.');
     return null;
   }
 
@@ -1751,36 +1750,32 @@ async function generarSintesisCapturas(){
   `1. NO te limites a enumerar o copiar. Debes hilar un argumento lógico que conecte las ideas centrales de todas las capturas.\n` +
   `2. Contextualiza el contenido. Si el texto habla de justicia, poder o enseñanzas, haz referencias cruzadas con conceptos filosóficos, teológicos o pedagógicos más amplios.\n` +
   `3. Cita explícitamente el número de captura (ej. "como se ve en la Captura 2...") cuando uses sus ideas.\n` +
-  `4. Aclara en la conclusión que esta síntesis fue generada por DeepSeek AI.\n\n` +
+  `4. Aclara en la conclusión que esta síntesis fue generada por Gemini AI.\n\n` +
   `Aquí están las capturas:\n${capturasTexto}\n\n` +
   `Devuelve el resultado EXACTAMENTE con este formato (sin añadir texto extra antes o después):\n` +
   `[INICIO_TEXTO_ENRIQUECIDO]\n(Aquí redacta un análisis profundo, pedagógico y fluido, estructurado en párrafos con emojis contextuales)\n[FIN_TEXTO_ENRIQUECIDO]\n` +
   `[INICIO_SUMULA]\n(Aquí redacta la SÚMULA en formato Markdown: # Título, ## Conceptos, - Ideas clave, usando la misma correlación lógica)\n[FIN_SUMULA]`;
 
   try {
-    var response = await fetch('https://api.deepseek.com/chat/completions', {
+    var url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent`;
+    var response = await fetch(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': 'Bearer ' + deepseekApiKey
+        'X-goog-api-key': geminiApiKey
       },
       body: JSON.stringify({
-        model: 'deepseek-chat',
-        messages: [
-          { role: 'system', content: 'Eres un experto en análisis pedagógico y teológico. Redactas síntesis profundas correlacionando ideas.' },
-          { role: 'user', content: prompt }
-        ],
-        temperature: 0.7
+        contents: [{ parts: [{ text: prompt }] }]
       })
     });
 
     if (!response.ok) {
       var errData = await response.json();
-      throw new Error(errData.error?.message || 'Error en la API de DeepSeek');
+      throw new Error(errData.error?.message || 'Error en la API de Gemini');
     }
 
     var data = await response.json();
-    var aiText = data.choices[0].message.content;
+    var aiText = data.candidates[0].content.parts[0].text;
 
     var txtMatch = aiText.match(/\[INICIO_TEXTO_ENRIQUECIDO\]([\s\S]*?)\[FIN_TEXTO_ENRIQUECIDO\]/);
     var sumMatch = aiText.match(/\[INICIO_SUMULA\]([\s\S]*?)\[FIN_SUMULA\]/);
@@ -1791,8 +1786,8 @@ async function generarSintesisCapturas(){
     return { txt: finalTxt, sumula: finalSum, titulo: titulo };
     
   } catch (error) {
-    console.error('DeepSeek Error:', error);
-    alert('❌ Error al conectar con DeepSeek AI: ' + error.message);
+    console.error('Gemini Error:', error);
+    alert('❌ Error al conectar con Gemini AI: ' + error.message);
     return null;
   }
 }
@@ -1806,8 +1801,8 @@ var tabSumula=document.getElementById('tabSumula');
 capSintesis.addEventListener('click',async function(){
   if(!capturas.length){alert('No hay capturas para sintetizar.');return;}
   
-  sintesisTxt.value = '🐳 DeepSeek AI está analizando las capturas y correlacionando conceptos... Por favor espera.';
-  sintesisSumula.value = '🐳 Generando SÚMULA...';
+  sintesisTxt.value = '✨ Gemini AI está analizando las capturas y correlacionando conceptos... Por favor espera.';
+  sintesisSumula.value = '✨ Generando SÚMULA...';
   tabTxt.classList.add('active');tabSumula.classList.remove('active');
   sintesisTxt.style.display='block';sintesisSumula.style.display='none';
   sintesisModal.classList.add('show');
@@ -1831,7 +1826,7 @@ document.getElementById('sintesisDownload').addEventListener('click',function(){
   var ext=sintesisTxt.style.display!=='none'?'txt':'md';
   var blob=new Blob([contenido],{type:'text/plain;charset=utf-8'});
   var u=URL.createObjectURL(blob),a=document.createElement('a');
-  a.href=u;a.download='sintesis_deepseek_'+Date.now()+'.'+ext;
+  a.href=u;a.download='sintesis_gemini_'+Date.now()+'.'+ext;
   document.body.appendChild(a);a.click();document.body.removeChild(a);
   setTimeout(function(){URL.revokeObjectURL(u);},1000);
 });
@@ -1854,7 +1849,7 @@ document.getElementById('btnConfig').addEventListener('click',function(){
   document.getElementById('prismaLogo').value=localStorage.getItem(STORAGE_PRISMA_LOGO)||'';
   document.getElementById('prismaBanner').value=localStorage.getItem(STORAGE_PRISMA_BANNER)||'';
   document.getElementById('prismaIntro').value=localStorage.getItem(STORAGE_PRISMA_INTRO)||'';
-  document.getElementById('prismaDeepseekKey').value=localStorage.getItem(STORAGE_DEEPSEEK_KEY)||'';
+  document.getElementById('prismaGeminiKey').value=localStorage.getItem(STORAGE_GEMINI_KEY)||'';
   document.getElementById('configModal').classList.add('show');
 });
 document.getElementById('closeConfigModal').addEventListener('click',function(){document.getElementById('configModal').classList.remove('show');});
@@ -1864,7 +1859,7 @@ document.getElementById('saveConfig').addEventListener('click',function(){
   localStorage.setItem(STORAGE_PRISMA_LOGO,document.getElementById('prismaLogo').value.trim());
   localStorage.setItem(STORAGE_PRISMA_BANNER,document.getElementById('prismaBanner').value.trim());
   localStorage.setItem(STORAGE_PRISMA_INTRO,document.getElementById('prismaIntro').value);
-  localStorage.setItem(STORAGE_DEEPSEEK_KEY,document.getElementById('prismaDeepseekKey').value.trim());
+  localStorage.setItem(STORAGE_GEMINI_KEY,document.getElementById('prismaGeminiKey').value.trim());
   aplicarPrismaBranding();
   document.getElementById('configModal').classList.remove('show');
 });
@@ -1922,7 +1917,7 @@ function buildStandaloneHTML(texto,titulo){
   var prismaLogo=localStorage.getItem(STORAGE_PRISMA_LOGO)||'';
   var prismaBanner=localStorage.getItem(STORAGE_PRISMA_BANNER)||'';
   var prismaIntro=localStorage.getItem(STORAGE_PRISMA_INTRO)||'';
-  var deepseekKey=localStorage.getItem(STORAGE_DEEPSEEK_KEY)||'';
+  var geminiKey=localStorage.getItem(STORAGE_GEMINI_KEY)||'';
 
   var logoHtml = prismaLogo ? '<img src="'+escAttr(prismaLogo)+'" class="brand-logo" alt="PRISMA">' : '';
   var bannerStyle = prismaBanner
@@ -1939,7 +1934,7 @@ function buildStandaloneHTML(texto,titulo){
     .split('__PRISMA_LOGO__').join(logoHtml)
     .split('__PRISMA_BANNER_STYLE__').join(bannerStyle)
     .split('__PRISMA_INTRO__').join(introHtml)
-    .split('__PRISMA_DEEPSEEK_KEY__').join(deepseekKey);
+    .split('__PRISMA_GEMINI_KEY__').join(geminiKey);
 }
 
 document.getElementById('exportarHtml').addEventListener('click',function(){
