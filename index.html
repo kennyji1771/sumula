@@ -341,6 +341,25 @@ select.form-select:focus,input.form-control:focus,textarea.form-control:focus{ou
         <span style="background:#9b59b6"></span><span style="background:#c9a227"></span>
         <span style="background:#2ecc71"></span>
       </div>
+
+      <!-- NUEVO: PRODUCT_ID -->
+      <div class="mb-2">
+        <label>ID del Producto <span style="color:#e74c3c">*</span></label>
+        <input type="text" class="form-control" id="prismaProductId" placeholder="ej: cuatro-crimenes">
+        <small style="color:var(--text-secondary);font-size:.7rem;display:block;margin-top:4px;">
+          Obligatorio. Debe coincidir con el ID en la hoja <b>Productos</b> del Sustrato. Sin este ID, la exportación se bloquea.
+        </small>
+      </div>
+
+      <!-- NUEVO: PRODUCT_AUTHOR -->
+      <div class="mb-2">
+        <label>Autor de la Obra</label>
+        <input type="text" class="form-control" id="prismaProductAuthor" placeholder="ej: Fermín Mármol León">
+        <small style="color:var(--text-secondary);font-size:.7rem;display:block;margin-top:4px;">
+          Aparece en la pantalla de compra/ingreso del producto exportado.
+        </small>
+      </div>
+
       <div class="mb-2"><label>URL del Logo (header)</label><input type="text" class="form-control" id="prismaLogo" placeholder="https://tu-logo.png"></div>
       <div class="mb-2"><label>URL del Banner (fondo del header)</label><input type="text" class="form-control" id="prismaBanner" placeholder="https://tu-banner.jpg"></div>
       <div class="mb-2"><label>Texto de Introducción de Prisma</label><textarea class="form-control" id="prismaIntro" rows="2" placeholder="Se inyectará al inicio..."></textarea></div>
@@ -380,8 +399,7 @@ select.form-select:focus,input.form-control:focus,textarea.form-control:focus{ou
     </div>
     <textarea id="sintesisTxt" class="sintesis-textarea" readonly placeholder="Generando análisis profundo con Gemini..."></textarea>
     <textarea id="sintesisSumula" class="sintesis-textarea" readonly style="display:none" placeholder="Generando SÚMULA..."></textarea>
-    
-    <!-- Contenedor Prismar FullScreen -->
+
     <div id="prismarContainer" style="display:none; position:fixed; inset:0; background:var(--bg); z-index:9999; flex-direction:column;">
       <div style="padding:15px 20px; background:var(--header-bg); color:#fff; display:flex; justify-content:space-between; align-items:center; box-shadow:0 4px 15px rgba(0,0,0,.4);">
         <h4 style="margin:0; font-size:1.2rem;"><i class="fas fa-gem" style="color:var(--prisma-gold); margin-right:8px;"></i> PRISMA · Vista del Conocimiento</h4>
@@ -436,7 +454,7 @@ select.form-select:focus,input.form-control:focus,textarea.form-control:focus{ou
 </div>
 
 <!-- ============================================================
-     TEMPLATE EXPORTABLE (PRODUCTO FINAL)
+     TEMPLATE EXPORTABLE (PRODUCTO FINAL · FASE 1)
      ============================================================ -->
 <template id="standaloneTemplate">
 <!DOCTYPE html>
@@ -445,6 +463,8 @@ select.form-select:focus,input.form-control:focus,textarea.form-control:focus{ou
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>__SUMMULA_TITLE__</title>
+<link rel="icon" type="image/png" href="./favicon.png">
+<meta name="description" content="PRISMA · Lectoescucha Interactiva. Deconstruye la luz del conocimiento.">
 <style>
 *{box-sizing:border-box}
 :root{--bg:#f4f7fc;--surface:#fff;--text:#212529;--text-sec:#6c757d;--border:#dee2e6;
@@ -561,6 +581,44 @@ body.dark select option{background-color:#1a1a2e;color:#e8ecf5}
 @keyframes spinner-border { to { transform: rotate(360deg); } }
 
 @media(max-width:768px){body{padding:10px}.toolbar button{padding:6px 10px;font-size:13px}h1{font-size:1.2rem}#karaokeBody{padding:16px 20px;font-size:1.3rem}.prisma-node.nivel-1{margin-left:2%;}.prisma-node.nivel-2{margin-left:4%;}.prisma-node.nivel-3{margin-left:6%;}}
+
+/* ═══════════ AUTH PRISMA ═══════════ */
+#nexusAuth{position:fixed;inset:0;background:rgba(10,17,40,.95);backdrop-filter:blur(12px);z-index:99999;display:flex;align-items:center;justify-content:center;padding:16px;overflow-y:auto;font-family:-apple-system,'Segoe UI',Roboto,sans-serif;color:#eef1f6}
+#nexusAuth .box{background:rgba(35,39,53,.8);border:1px solid rgba(201,162,39,.3);border-radius:18px;padding:24px 22px;max-width:440px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.8);animation:nxaIn .3s ease;backdrop-filter:blur(10px)}
+@keyframes nxaIn{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+#nexusAuth .brand{text-align:center;margin-bottom:22px}
+#nexusAuth .brand h2{margin:0;font-size:1.4rem;background:linear-gradient(135deg,#c9a227,#e6c84a);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;letter-spacing:1px}
+#nexusAuth .brand p{margin:6px 0 0;color:#8b93a5;font-size:12px;text-transform:uppercase;letter-spacing:2px}
+#nexusAuth .fld{margin-bottom:14px}
+#nexusAuth .fld label{display:block;font-size:11px;color:#c9a227;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;font-weight:700}
+#nexusAuth .fld input,#nexusAuth .fld select{width:100%;padding:12px 14px;border-radius:10px;border:1px solid #2b3040;background:rgba(15,17,23,.8);color:#eef1f6;font-size:15px;outline:none;transition:border .15s}
+#nexusAuth .fld input:focus{border-color:#3498db}
+#nexusAuth .fld .err{color:#e74c3c;font-size:11px;margin-top:4px;display:none}
+#nexusAuth .fld.bad input{border-color:#e74c3c}
+#nexusAuth .fld.bad .err{display:block}
+#nexusAuth .row{display:grid;grid-template-columns:80px 1fr;gap:8px}
+#nexusAuth .btn{width:100%;padding:14px;border:none;border-radius:11px;font-size:14px;font-weight:700;cursor:pointer;color:#fff;background:linear-gradient(135deg,#3498db,#2980b9);transition:transform .1s,filter .15s;font-family:inherit;margin-top:8px;text-transform:uppercase;letter-spacing:1px}
+#nexusAuth .btn:active{transform:scale(.98)}
+#nexusAuth .btn.alt{background:transparent;border:1px solid #c9a227;color:#c9a227}
+#nexusAuth .btn.success{background:linear-gradient(135deg,#2ecc71,#27ae60)}
+#nexusAuth .info-box{background:rgba(15,17,23,.6);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:14px;font-size:13px;margin-bottom:14px;line-height:1.6;color:#b0b8c5}
+#nexusAuth .info-box b{color:#c9a227}
+#nexusAuth .metodo{padding:12px;background:rgba(255,255,255,.03);border-radius:8px;border:1px solid rgba(255,255,255,.1);margin-bottom:8px;cursor:pointer;transition:all .2s}
+#nexusAuth .metodo.on{border-color:#c9a227;background:rgba(201,162,39,.1)}
+#nexusAuth .pay-btn{display:flex;align-items:center;justify-content:center;gap:10px;background:linear-gradient(135deg,#0a3d6b,#1565c0);color:#fff;text-decoration:none;padding:15px;border-radius:12px;font-weight:800;font-size:14px;margin:10px 0;box-shadow:0 6px 20px rgba(21,101,192,.4);animation:nxaPulse 2.2s infinite;border:none;cursor:pointer;width:100%}
+@keyframes nxaPulse{0%,100%{box-shadow:0 6px 20px rgba(21,101,192,.4)}50%{box-shadow:0 6px 30px rgba(21,101,192,.8)}}
+#nexusAuth .msg{padding:12px;border-radius:10px;font-size:13px;margin-bottom:12px;display:none}
+#nexusAuth .msg.show{display:block}
+#nexusAuth .msg.ok{background:rgba(46,204,113,.1);color:#2ecc71;border:1px solid #2ecc71}
+#nexusAuth .msg.err{background:rgba(231,76,60,.1);color:#e74c3c;border:1px solid #e74c3c}
+#nexusAuth .msg.wait{background:rgba(243,156,18,.1);color:#f39c12;border:1px solid #f39c12}
+#nexusAuth .note{font-size:11px;color:#8b93a5;text-align:center;margin-top:16px}
+#nexusAuth .spin{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:nxaSpin .8s linear infinite;vertical-align:-2px;margin-right:6px}
+@keyframes nxaSpin{to{transform:rotate(360deg)}}
+
+/* Footer PRISMA */
+.prisma-footer{text-align:center;padding:24px;font-size:12px;color:#8b93a5;border-top:1px solid #2b3040;margin-top:40px;font-family:-apple-system,sans-serif}
+.prisma-footer b{color:#c9a227;letter-spacing:2px;font-size:14px}
 </style>
 </head>
 <body>
@@ -638,12 +696,12 @@ __PRISMA_INTRO__
       <button id="closeWelcome" class="close-x">&times;</button>
     </div>
     <p style="font-size:.95rem; line-height:1.6; margin-bottom:16px;">Estás ante un <b>Ecosistema Pedagógico Inteligente</b>. Para aprovecharlo al máximo, sigue estos 3 pasos:</p>
-    
+
     <div style="background:var(--editor-bg); padding:15px; border-radius:10px; margin-bottom:15px; border-left:4px solid var(--prisma-blue);">
       <h6 style="font-weight:bold; color:var(--prisma-blue);">1. Configura tu IA</h6>
       <p style="font-size:.85rem; margin:0; color:var(--text-sec);">Haz clic en el engranaje ⚙️ arriba a la derecha y pega tu API Key de Gemini (es gratis).</p>
     </div>
-    
+
     <div style="background:var(--editor-bg); padding:15px; border-radius:10px; margin-bottom:15px; border-left:4px solid var(--prisma-emerald);">
       <h6 style="font-weight:bold; color:var(--prisma-emerald);">2. Lee y Captura</h6>
       <p style="font-size:.85rem; margin:0; color:var(--text-sec);">Usa el botón 📖 para abrir el Karaoke. Mientras lees, pulsa "⭐ Capturar" en los fragmentos que consideres clave.</p>
@@ -676,8 +734,7 @@ __PRISMA_INTRO__
     </div>
     <textarea id="sintesisTxt" class="sintesis-textarea" readonly placeholder="Generando análisis profundo con Gemini..."></textarea>
     <textarea id="sintesisSumula" class="sintesis-textarea" readonly style="display:none" placeholder="Generando SÚMULA..."></textarea>
-    
-    <!-- Contenedor Prismar FullScreen -->
+
     <div id="prismarContainer" style="display:none; position:fixed; inset:0; background:var(--bg); z-index:9999; flex-direction:column;">
       <div style="padding:15px 20px; background:linear-gradient(135deg,#0a1128,#1a2a5e); color:#fff; display:flex; justify-content:space-between; align-items:center; box-shadow:0 4px 15px rgba(0,0,0,.4);">
         <h4 style="margin:0; font-size:1.2rem;"><i class="fas fa-gem" style="color:var(--prisma-gold); margin-right:8px;"></i> PRISMA · Vista del Conocimiento</h4>
@@ -693,6 +750,8 @@ __PRISMA_INTRO__
     </div>
   </div>
 </div>
+
+<div id="nexusAuth"><div class="box" id="nexusAuthBox"></div></div>
 
 <div id="karaokeModal">
   <div id="karaokeHeader">
@@ -727,6 +786,161 @@ __PRISMA_INTRO__
   </div>
 </div>
 
+<script>
+/* ═══════════ AUTH PRISMA (Candado de Seguridad) ═══════════ */
+(function(){
+'use strict';
+var APPS_URL = 'https://script.google.com/macros/s/AKfycbwvRRiBG0lgdhZPdHdPkFmOq45cwqORUDRljfkKn00WsDQqqAG_xQASnoysLb2RlVWU/exec';
+var PRODUCT_ID = __PRODUCT_ID_JSON__;
+var PRODUCT_TITLE = __PRODUCT_TITLE_JSON__;
+var PRODUCT_AUTHOR = __PRODUCT_AUTHOR_JSON__;
+var LS = { 
+  email:'nexus_'+PRODUCT_ID+'_email', 
+  token:'nexus_'+PRODUCT_ID+'_sessionToken', 
+  device:'nexus_'+PRODUCT_ID+'_deviceUUID' 
+};
+
+var box = document.getElementById('nexusAuthBox');
+var overlay = document.getElementById('nexusAuth');
+var datos = {};
+
+function $(id){ return document.getElementById(id); }
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+function getDeviceUUID(){ var d = localStorage.getItem(LS.device); if (!d){ d = 'dev-' + Date.now() + '-' + Math.random().toString(36).slice(2,10); localStorage.setItem(LS.device, d); } return d; }
+function api(data){
+  var merged = Object.assign({}, data); merged.ua = navigator.userAgent || ''; merged.ip = '';
+  return fetch(APPS_URL, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams(merged).toString() }).then(function(r){ return r.json(); });
+}
+function liberar(){
+  overlay.style.display = 'none';
+  window.__NEXUS_AUTH_OK = true;
+  if (typeof window.__NEXUS_INIT === 'function') { try { window.__NEXUS_INIT(); } catch(e){} }
+}
+
+function pantallaInicio(msg){
+  box.innerHTML =
+    '<div class="brand"><h2>✨ PRISMA</h2><p>COLECCIÓN LECTOESCUCHA</p></div>' +
+    (msg ? '<div class="msg err show">'+esc(msg)+'</div>' : '') +
+    '<div class="info-box"><div style="font-size:16px;font-weight:800;color:#fff;margin-bottom:4px">'+esc(PRODUCT_TITLE)+'</div><div style="font-size:12px;color:#c9a227;margin-bottom:12px">'+esc(PRODUCT_AUTHOR)+'</div>Domina esta obra con lectura asistida, karaoke interactivo, capturas y síntesis con IA. Compra única · acceso permanente en 2 dispositivos.</div>' +
+    '<button class="btn" id="nxGoReg">🛒 Comprar y acceder</button>' +
+    '<button class="btn alt" id="nxGoLogin">Ya tengo acceso — Ingresar</button>';
+  $('nxGoReg').onclick = function(){ pantallaRegistro(); };
+  $('nxGoLogin').onclick = function(){ pantallaLogin(); };
+}
+
+function pantallaRegistro(){
+  box.innerHTML =
+    '<div class="brand"><h2>📝 Datos Personales</h2><p>Paso 1 de 3</p></div>' +
+    '<div class="fld"><label>Nombre</label><input type="text" id="nxN"><div class="err">Obligatorio</div></div>' +
+    '<div class="fld"><label>Apellido</label><input type="text" id="nxA"><div class="err">Obligatorio</div></div>' +
+    '<div class="fld"><label>Documento</label><div class="row"><select id="nxT"><option value="V">V</option><option value="E">E</option></select><input type="text" id="nxD" inputmode="numeric"><div class="err">Inválido</div></div></div>' +
+    '<div class="fld"><label>Correo Electrónico</label><input type="email" id="nxE" inputmode="email"><div class="err">Correo inválido</div></div>' +
+    '<div class="fld"><label>Teléfono</label><input type="tel" id="nxP" inputmode="tel" placeholder="04141234567"><div class="err">Inválido</div></div>' +
+    '<button class="btn" id="nxNext">Continuar al Pago →</button>' +
+    '<button class="btn alt" id="nxBack">← Volver</button>';
+  $('nxNext').onclick = validarRegistro;
+  $('nxBack').onclick = function(){ pantallaInicio(); };
+}
+
+function validarRegistro(){
+  var c = [{id:'nxN', fn:function(v){return v.length>1;}}, {id:'nxA', fn:function(v){return v.length>1;}}, {id:'nxD', fn:function(v){return v.replace(/\D/g,'').length>=6;}, row:true}, {id:'nxE', fn:function(v){return /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v);}}, {id:'nxP', fn:function(v){return v.replace(/\D/g,'').length>=10;}}];
+  var ok = true;
+  c.forEach(function(x){ var el = $(x.id); var f = x.row ? el.parentNode.parentNode : el.parentNode; if(!x.fn((el.value||'').trim())){ f.classList.add('bad'); ok=false; } else f.classList.remove('bad'); });
+  if(!ok) return;
+  datos = { nombre: $('nxN').value.trim(), apellido: $('nxA').value.trim(), tipoDoc: $('nxT').value, numDoc: $('nxD').value.trim(), email: $('nxE').value.trim().toLowerCase(), telefono: $('nxP').value.trim() };
+  pantallaPago();
+}
+
+function pantallaPago(){
+  box.innerHTML = '<div class="brand"><h2>💳 Pago Seguro</h2><p>Paso 2 de 3</p></div><div id="nxMetodos" class="info-box"><div style="text-align:center"><div class="spin"></div></div></div><button class="btn alt" id="nxBack">← Volver</button>';
+  $('nxBack').onclick = function(){ pantallaRegistro(); };
+  api({ accion:'infoProducto', idProducto: PRODUCT_ID }).then(function(r){
+    if (!r.ok) { $('nxMetodos').innerHTML = '<div class="msg err show">'+esc(r.mensaje)+'</div>'; return; }
+    datos.metodos = r.metodos;
+    var html = '';
+    r.metodos.forEach(function(m, i){
+      html += '<div class="metodo'+(i===0?' on':'')+'" data-idx="'+i+'"><div style="font-weight:700;color:#fff">'+esc(m.metodo.icono)+' '+esc(m.metodo.nombre)+'</div><div style="font-size:12px;color:#c9a227">Precio: '+esc(m.precio)+' '+esc(m.metodo.moneda)+'</div></div>';
+    });
+    html += '<div id="nxPagoDetalle" style="margin-top:14px"></div>';
+    $('nxMetodos').innerHTML = html;
+    pintaPagoDetalle(r.metodos[0]);
+    document.querySelectorAll('#nxMetodos .metodo').forEach(function(el){ el.onclick = function(){ document.querySelectorAll('#nxMetodos .metodo').forEach(function(x){ x.classList.remove('on'); }); el.classList.add('on'); pintaPagoDetalle(r.metodos[parseInt(el.dataset.idx)]); }; });
+  });
+}
+
+function pintaPagoDetalle(combo){
+  var met = combo.metodo, dat = combo.datos;
+  var html = '<div style="background:rgba(0,0,0,.3);border-radius:8px;padding:12px;font-size:13px;line-height:1.6;color:#b0b8c5">';
+  if (met.tipo === 'pago_movil'){
+    html += '<div>Cédula: <b>'+esc(dat.cedula)+'</b></div><div>Teléfono: <b>'+esc(dat.telefono)+'</b></div><div>Banco: <b>'+esc(dat.banco)+' (BDV)</b></div>';
+    if(dat.cedula && dat.telefono && dat.banco){ var ced = dat.cedula.replace(/\D/g,''), tel = dat.telefono.replace(/\D/g,''); if(tel.indexOf('58')!==0 && tel.indexOf('0')===0) tel='58'+tel.slice(1); var link='https://bdvdigital.banvenez.com/pagomovil?id='+ced+'&phone='+tel+'&bank='+dat.banco; html += '<a class="pay-btn" href="'+link+'" target="_blank">📲 PAGAR CON BDV</a>'; }
+  } else if (met.tipo === 'transferencia'){
+    html += '<div>Cuenta: <b>'+esc(dat.cuenta)+'</b></div><div>Titular: <b>'+esc(dat.titular)+'</b></div><div>Cédula: <b>'+esc(dat.cedula)+'</b></div>';
+  } else if (met.tipo === 'wallet'){
+    html += '<div>Email: <b>'+esc(dat.email)+'</b></div>';
+  }
+  html += '</div>';
+  html += '<div class="fld" style="margin-top:14px"><label>Monto Pagado ('+esc(met.moneda)+')</label><input type="text" id="nxMonto" value="'+esc(combo.precio)+'"></div>';
+  html += '<div class="fld"><label>Nº Operación / Referencia</label><input type="text" id="nxOp" placeholder="Ej: 00457812"></div>';
+  html += '<div class="msg" id="nxPagoMsg"></div>';
+  html += '<button class="btn success" id="nxPagar">Enviar Pago →</button>';
+  $('nxPagoDetalle').innerHTML = html;
+  $('nxPagar').onclick = function(){
+    var op = ($('nxOp').value||'').trim(); var monto = ($('nxMonto').value||'').trim();
+    if(op.length < 4) { $('nxOp').parentNode.classList.add('bad'); return; }
+    var btn = $('nxPagar'); btn.disabled = true; btn.innerHTML = '<span class="spin"></span> Enviando...';
+    api({ accion:'registrar', nombre:datos.nombre, apellido:datos.apellido, tipoDoc:datos.tipoDoc, numDoc:datos.numDoc, email:datos.email, telefono:datos.telefono }).then(function(rReg){
+      if(!rReg.ok && rReg.mensaje.indexOf('ya está registrado')===-1) throw new Error(rReg.mensaje);
+      return api({ accion:'iniciarOperacion', email:datos.email, idProducto:PRODUCT_ID, idProductoMetodo:combo.id, numOperacion:op, monto:monto, datos:JSON.stringify({metodo:met.nombre}) });
+    }).then(function(rOp){
+      if(rOp.ok) pantallaEspera();
+      else { btn.disabled=false; btn.textContent='Enviar Pago →'; $('nxPagoMsg').className='msg err show'; $('nxPagoMsg').textContent=rOp.mensaje; }
+    }).catch(function(e){ btn.disabled=false; btn.textContent='Enviar Pago →'; $('nxPagoMsg').className='msg err show'; $('nxPagoMsg').textContent=e.message; });
+  };
+}
+
+function pantallaEspera(){
+  box.innerHTML = '<div class="brand"><h2>⏳ Pago Recibido</h2><p>Paso 3 de 3</p></div><div class="msg wait show">Tu pago y Nº de operación han sido registrados.<br><br>El administrador validará el pago contra el banco. Recibirás un <b>correo con tu PIN de acceso</b> cuando esté aprobado.</div><button class="btn" id="nxGoLogin">Ya recibí mi PIN — Ingresar</button>';
+  $('nxGoLogin').onclick = function(){ pantallaLogin(); };
+}
+
+function pantallaLogin(msg){
+  var emailPre = localStorage.getItem(LS.email) || '';
+  box.innerHTML = '<div class="brand"><h2>🔓 Acceso PRISMA</h2><p>Correo + PIN</p></div>' + (msg?'<div class="msg err show">'+esc(msg)+'</div>':'') + '<div class="fld"><label>Correo Electrónico</label><input type="email" id="nxEmail" value="'+esc(emailPre)+'"><div class="err">Correo inválido</div></div><div class="fld"><label>PIN de 4 dígitos</label><input type="password" id="nxPin" maxlength="4" inputmode="numeric"><div class="err">Debe tener 4 dígitos</div></div><button class="btn success" id="nxLogin">Ingresar al Prisma</button><button class="btn alt" id="nxBack">← Volver</button>';
+  $('nxLogin').onclick = doLogin;
+  $('nxBack').onclick = function(){ pantallaInicio(); };
+  $('nxPin').addEventListener('input', function(e){ e.target.value = e.target.value.replace(/\D/g,'').slice(0,4); });
+}
+
+function doLogin(){
+  var email = ($('nxEmail').value||'').trim().toLowerCase(); var pin = ($('nxPin').value||'').trim();
+  var btn = $('nxLogin'); btn.disabled = true; btn.innerHTML = '<span class="spin"></span> Verificando...';
+  api({ accion:'loginConPin', email:email, pin:pin, deviceUUID:getDeviceUUID() }).then(function(r){
+    if(r.ok){
+      localStorage.setItem(LS.email, r.email); localStorage.setItem(LS.token, r.sessionToken); localStorage.setItem(LS.device, r.deviceUUID);
+      liberar();
+    } else {
+      btn.disabled = false; btn.textContent = 'Ingresar al Prisma';
+      var prevErr = box.querySelector('.msg.err'); if(prevErr) prevErr.remove();
+      var div = document.createElement('div'); div.className='msg err show'; div.textContent = r.mensaje || 'Error al ingresar';
+      box.insertBefore(div, box.children[2]);
+    }
+  }).catch(function(e){ btn.disabled = false; btn.textContent = 'Ingresar al Prisma'; alert(e.message); });
+}
+
+function arrancar(){
+  var email = localStorage.getItem(LS.email), token = localStorage.getItem(LS.token), device = localStorage.getItem(LS.device);
+  if(email && token && device){
+    box.innerHTML = '<div class="brand"><h2>✨ PRISMA</h2><p>Verificando sesión...</p></div><div style="text-align:center;padding:20px"><div class="spin" style="width:24px;height:24px;border-width:3px"></div></div>';
+    api({ accion:'validarSesion', email:email, sessionToken:token, deviceUUID:device }).then(function(r){
+      if(r.ok) liberar();
+      else { localStorage.removeItem(LS.token); pantallaInicio(); }
+    }).catch(function(){ pantallaInicio(); });
+  } else { pantallaInicio(); }
+}
+arrancar();
+})();
+</script>
 <script>var raw = __SUMMULA_CONTENT__;</script>
 <script>
 (function(){
@@ -1162,7 +1376,7 @@ kFontDown.addEventListener('click',function(){fontSizeKaraoke=Math.max(0.8,fontS
    ============================================================ */
 async function generarSintesisCapturas(){
   if(!capturas.length) return null;
-  
+
   var geminiApiKey = lsGet(K.gemini, '');
   if(!geminiApiKey) {
     alert('⚠️ Para usar la IA, primero debes configurar tu API Key en el botón ⚙️ (arriba a la derecha).');
@@ -1171,21 +1385,21 @@ async function generarSintesisCapturas(){
   }
 
   var titulo = (document.title||'Documento').replace(/^▶\s*/,'').trim();
-  var capturasTexto = capturas.map((c, i) => `[Captura ${i+1}]: "${c}"`).join('\n\n');
-  
-  var prompt = `Actúa como un experto pedagogo, teólogo y analista de textos. Tu tarea es realizar una síntesis profunda y correlativa de los siguientes fragmentos extraídos del documento titulado "${titulo}".\n\n` +
-  `Instrucciones:\n` +
-  `1. NO te limites a enumerar o copiar. Debes hilar un argumento lógico que conecte las ideas centrales de todas las capturas.\n` +
-  `2. Contextualiza el contenido. Si el texto habla de justicia, poder o enseñanzas, haz referencias cruzadas con conceptos filosóficos, teológicos o pedagógicos más amplios.\n` +
-  `3. Cita explícitamente el número de captura (ej. "como se ve en la Captura 2...") cuando uses sus ideas.\n` +
-  `4. Aclara en la conclusión que esta síntesis fue generada por Gemini AI.\n\n` +
-  `Aquí están las capturas:\n${capturasTexto}\n\n` +
-  `Devuelve el resultado EXACTAMENTE con este formato (sin añadir texto extra antes o después):\n` +
-  `[INICIO_TEXTO_ENRIQUECIDO]\n(Aquí redacta un análisis profundo, pedagógico y fluido, estructurado en párrafos con emojis contextuales)\n[FIN_TEXTO_ENRIQUECIDO]\n` +
-  `[INICIO_SUMULA]\n(Aquí redacta la SÚMULA en formato Markdown: # Título, ## Conceptos, - Ideas clave, usando la misma correlación lógica)\n[FIN_SUMULA]`;
+  var capturasTexto = capturas.map(function(c, i){ return '[Captura ' + (i+1) + ']: "' + c + '"'; }).join('\n\n');
+
+  var prompt = 'Actúa como un experto pedagogo, teólogo y analista de textos. Tu tarea es realizar una síntesis profunda y correlativa de los siguientes fragmentos extraídos del documento titulado "' + titulo + '".\n\n' +
+  'Instrucciones:\n' +
+  '1. NO te limites a enumerar o copiar. Debes hilar un argumento lógico que conecte las ideas centrales de todas las capturas.\n' +
+  '2. Contextualiza el contenido. Si el texto habla de justicia, poder o enseñanzas, haz referencias cruzadas con conceptos filosóficos, teológicos o pedagógicos más amplios.\n' +
+  '3. Cita explícitamente el número de captura (ej. "como se ve en la Captura 2...") cuando uses sus ideas.\n' +
+  '4. Aclara en la conclusión que esta síntesis fue generada por Gemini AI.\n\n' +
+  'Aquí están las capturas:\n' + capturasTexto + '\n\n' +
+  'Devuelve el resultado EXACTAMENTE con este formato (sin añadir texto extra antes o después):\n' +
+  '[INICIO_TEXTO_ENRIQUECIDO]\n(Aquí redacta un análisis profundo, pedagógico y fluido, estructurado en párrafos con emojis contextuales)\n[FIN_TEXTO_ENRIQUECIDO]\n' +
+  '[INICIO_SUMULA]\n(Aquí redacta la SÚMULA en formato Markdown: # Título, ## Conceptos, - Ideas clave, usando la misma correlación lógica)\n[FIN_SUMULA]';
 
   try {
-    var url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent`;
+    var url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent';
     var response = await fetch(url, {
       method: 'POST',
       headers: {
@@ -1199,7 +1413,7 @@ async function generarSintesisCapturas(){
 
     if (!response.ok) {
       var errData = await response.json();
-      throw new Error(errData.error?.message || 'Error en la API de Gemini');
+      throw new Error((errData.error && errData.error.message) || 'Error en la API de Gemini');
     }
 
     var data = await response.json();
@@ -1212,7 +1426,7 @@ async function generarSintesisCapturas(){
     var finalSum = sumMatch ? sumMatch[1].trim() : aiText;
 
     return { txt: finalTxt, sumula: finalSum, titulo: titulo };
-    
+
   } catch (error) {
     console.error('Gemini Error:', error);
     alert('❌ Error al conectar con Gemini AI: ' + error.message);
@@ -1224,7 +1438,7 @@ async function generarSintesisCapturas(){
 function generarPrismaVisual(markdownText) {
   var container = $('prismarContent');
   container.innerHTML = '';
-  
+
   if(!markdownText) {
     container.innerHTML = '<div style="text-align:center;color:var(--text-sec);padding:40px; font-size:1.2rem;">No hay datos para prismar.</div>';
     return;
@@ -1236,8 +1450,6 @@ function generarPrismaVisual(markdownText) {
   lineas.forEach(function(linea, index) {
     linea = linea.trim();
     if(!linea) return;
-
-    // Delay animation based on index
     var delay = index * 0.05;
 
     if(linea.indexOf('# ') === 0) {
@@ -1249,7 +1461,6 @@ function generarPrismaVisual(markdownText) {
     } else if(linea.indexOf('- ') === 0 || linea.indexOf('* ') === 0) {
       html += '<div class="prisma-node nivel-3" style="animation-delay:'+delay+'s"><div class="prisma-bullet">' + linea.slice(2) + '</div></div>';
     } else {
-      // Párrafo normal
       html += '<div class="prisma-node nivel-1" style="animation-delay:'+delay+'s"><div class="prisma-text">' + linea + '</div></div>';
     }
   });
@@ -1269,20 +1480,18 @@ tabSumula.addEventListener('click',function(){resetTabs();tabSumula.classList.ad
 tabPrismar.addEventListener('click',function(){
   resetTabs();
   tabPrismar.classList.add('active');
-  // Generar el prisma basado en el markdown de la Súmula
   generarPrismaVisual(sintesisSumula.value);
-  prismarContainer.style.display='flex'; // Mostrar Fullscreen
+  prismarContainer.style.display='flex';
 });
 
 $('btnCerrarPrisma').addEventListener('click', function(){
-  prismarContainer.style.display='none'; // Ocultar Fullscreen
-  tabSumula.click(); // Volver a Súmula
+  prismarContainer.style.display='none';
+  tabSumula.click();
 });
 
 capSintesis.addEventListener('click',async function(){
   if(!capturas.length){alert('No hay capturas para sintetizar.');return;}
-  
-  // Mostrar Spinner
+
   var btn = this;
   var originalText = btn.innerHTML;
   btn.innerHTML = '<span class="spinner-border" style="width:1rem;height:1rem;border-width:2px;"></span> Analizando...';
@@ -1290,22 +1499,20 @@ capSintesis.addEventListener('click',async function(){
 
   sintesisTxt.value = '✨ Gemini AI está analizando las capturas y correlacionando conceptos... Por favor espera.';
   sintesisSumula.value = '✨ Generando SÚMULA...';
-  
+
   resetTabs();
   tabTxt.classList.add('active');
   sintesisTxt.style.display='block';
   sintesisModal.classList.add('show');
 
   var result = await generarSintesisCapturas();
-  
-  // Restaurar botón
+
   btn.innerHTML = originalText;
   btn.disabled = false;
 
   if (result) {
     sintesisTxt.value = result.txt;
     sintesisSumula.value = result.sumula;
-    // If user was on Prismar tab, generate it now
     if(tabPrismar.classList.contains('active')) generarPrismaVisual(result.sumula);
   } else {
     sintesisTxt.value = '❌ No se pudo generar la síntesis. Revisa tu API Key en los ajustes.';
@@ -1337,15 +1544,25 @@ document.addEventListener('keydown',function(e){
   else if(e.key==='e'||e.key==='E'){btnExpandir.click();}
   else if(e.key==='c'||e.key==='C'){btnColapsar.click();}
   else if(e.key==='k'||e.key==='K'){btnKaraoke.click();}
-  else if(e.key==='Escape'){ 
+  else if(e.key==='Escape'){
     if(prismarContainer.style.display==='flex'){ $('btnCerrarPrisma').click(); }
     else if(karaokeActivo){kClose.click();}
     else if(sintesisModal.classList.contains('show')){ $('sintesisCancelar').click(); }
   }
 });
-aplicarTema();render('');actualizarCapturasPanel();
+aplicarTema();
+if (window.__NEXUS_AUTH_OK) { render(''); }
+else { window.__NEXUS_INIT = function(){ render(''); }; }
+actualizarCapturasPanel();
 })();
 </script>
+
+<div class="prisma-footer">
+  <img src="./favicon.png" style="height:32px;opacity:0.8;margin-bottom:8px;" alt="PRISMA"><br>
+  <b>PRISMA</b><br>
+  <span style="opacity:0.7;font-size:11px;display:block;margin-top:4px;">Lectoescucha Interactiva · Editado por Nexus Acelerador</span>
+</div>
+
 </body>
 </html>
 </template>
@@ -1418,6 +1635,8 @@ var STORAGE_AUTOSAVE='nexus_autosave';
 var STORAGE_PRISMA_LOGO='nexus_prisma_logo';
 var STORAGE_PRISMA_BANNER='nexus_prisma_banner';
 var STORAGE_PRISMA_INTRO='nexus_prisma_intro';
+var STORAGE_PRISMA_PRODUCT_ID='nexus_prisma_product_id';
+var STORAGE_PRISMA_PRODUCT_AUTHOR='nexus_prisma_product_author';
 var STORAGE_GEMINI_KEY='nexus_gemini_key';
 
 async function activarMantenimiento(){
@@ -1933,7 +2152,7 @@ karaokeBody.style.fontSize=fontSizeKaraoke+'rem';
 /* SÍNTESIS CON GEMINI AI (Fábrica) */
 async function generarSintesisCapturas(){
   if(!capturas.length) return null;
-  
+
   var geminiApiKey = localStorage.getItem(STORAGE_GEMINI_KEY) || '';
   if(!geminiApiKey) {
     alert('⚠️ Para usar la IA de Gemini, primero debes configurar tu API Key en el engranaje ⚙️ -> Ajustes Prisma.');
@@ -1941,21 +2160,21 @@ async function generarSintesisCapturas(){
   }
 
   var titulo = (tituloDin.textContent||'Documento').replace(/^▶\s*/,'').trim();
-  var capturasTexto = capturas.map((c, i) => `[Captura ${i+1}]: "${c}"`).join('\n\n');
-  
-  var prompt = `Actúa como un experto pedagogo, teólogo y analista de textos. Tu tarea es realizar una síntesis profunda y correlativa de los siguientes fragmentos extraídos del documento titulado "${titulo}".\n\n` +
-  `Instrucciones:\n` +
-  `1. NO te limites a enumerar o copiar. Debes hilar un argumento lógico que conecte las ideas centrales de todas las capturas.\n` +
-  `2. Contextualiza el contenido. Si el texto habla de justicia, poder o enseñanzas, haz referencias cruzadas con conceptos filosóficos, teológicos o pedagógicos más amplios.\n` +
-  `3. Cita explícitamente el número de captura (ej. "como se ve en la Captura 2...") cuando uses sus ideas.\n` +
-  `4. Aclara en la conclusión que esta síntesis fue generada por Gemini AI.\n\n` +
-  `Aquí están las capturas:\n${capturasTexto}\n\n` +
-  `Devuelve el resultado EXACTAMENTE con este formato (sin añadir texto extra antes o después):\n` +
-  `[INICIO_TEXTO_ENRIQUECIDO]\n(Aquí redacta un análisis profundo, pedagógico y fluido, estructurado en párrafos con emojis contextuales)\n[FIN_TEXTO_ENRIQUECIDO]\n` +
-  `[INICIO_SUMULA]\n(Aquí redacta la SÚMULA en formato Markdown: # Título, ## Conceptos, - Ideas clave, usando la misma correlación lógica)\n[FIN_SUMULA]`;
+  var capturasTexto = capturas.map(function(c, i){ return '[Captura ' + (i+1) + ']: "' + c + '"'; }).join('\n\n');
+
+  var prompt = 'Actúa como un experto pedagogo, teólogo y analista de textos. Tu tarea es realizar una síntesis profunda y correlativa de los siguientes fragmentos extraídos del documento titulado "' + titulo + '".\n\n' +
+  'Instrucciones:\n' +
+  '1. NO te limites a enumerar o copiar. Debes hilar un argumento lógico que conecte las ideas centrales de todas las capturas.\n' +
+  '2. Contextualiza el contenido. Si el texto habla de justicia, poder o enseñanzas, haz referencias cruzadas con conceptos filosóficos, teológicos o pedagógicos más amplios.\n' +
+  '3. Cita explícitamente el número de captura (ej. "como se ve en la Captura 2...") cuando uses sus ideas.\n' +
+  '4. Aclara en la conclusión que esta síntesis fue generada por Gemini AI.\n\n' +
+  'Aquí están las capturas:\n' + capturasTexto + '\n\n' +
+  'Devuelve el resultado EXACTAMENTE con este formato (sin añadir texto extra antes o después):\n' +
+  '[INICIO_TEXTO_ENRIQUECIDO]\n(Aquí redacta un análisis profundo, pedagógico y fluido, estructurado en párrafos con emojis contextuales)\n[FIN_TEXTO_ENRIQUECIDO]\n' +
+  '[INICIO_SUMULA]\n(Aquí redacta la SÚMULA en formato Markdown: # Título, ## Conceptos, - Ideas clave, usando la misma correlación lógica)\n[FIN_SUMULA]';
 
   try {
-    var url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent`;
+    var url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent';
     var response = await fetch(url, {
       method: 'POST',
       headers: {
@@ -1969,7 +2188,7 @@ async function generarSintesisCapturas(){
 
     if (!response.ok) {
       var errData = await response.json();
-      throw new Error(errData.error?.message || 'Error en la API de Gemini');
+      throw new Error((errData.error && errData.error.message) || 'Error en la API de Gemini');
     }
 
     var data = await response.json();
@@ -1982,7 +2201,7 @@ async function generarSintesisCapturas(){
     var finalSum = sumMatch ? sumMatch[1].trim() : aiText;
 
     return { txt: finalTxt, sumula: finalSum, titulo: titulo };
-    
+
   } catch (error) {
     console.error('Gemini Error:', error);
     alert('❌ Error al conectar con Gemini AI: ' + error.message);
@@ -2008,11 +2227,11 @@ tabSumula.addEventListener('click',function(){resetTabs();tabSumula.classList.ad
 tabPrismar.addEventListener('click',function(){
   resetTabs();
   tabPrismar.classList.add('active');
-  
+
   var container = document.getElementById('prismarContent');
   container.innerHTML = '';
   var markdownText = sintesisSumula.value;
-  
+
   if(!markdownText) {
     container.innerHTML = '<div style="text-align:center;color:var(--text-sec);padding:40px; font-size:1.2rem;">No hay datos para prismar.</div>';
   } else {
@@ -2036,7 +2255,7 @@ tabPrismar.addEventListener('click',function(){
     });
     container.innerHTML = html;
   }
-  
+
   prismarContainer.style.display='flex';
 });
 
@@ -2047,7 +2266,7 @@ document.getElementById('btnCerrarPrisma').addEventListener('click', function(){
 
 capSintesis.addEventListener('click',async function(){
   if(!capturas.length){alert('No hay capturas para sintetizar.');return;}
-  
+
   var btn = this;
   var originalText = btn.innerHTML;
   btn.innerHTML = '<span class="spinner-border" style="width:1rem;height:1rem;border-width:2px;"></span> Analizando...';
@@ -2055,14 +2274,14 @@ capSintesis.addEventListener('click',async function(){
 
   sintesisTxt.value = '✨ Gemini AI está analizando las capturas y correlacionando conceptos... Por favor espera.';
   sintesisSumula.value = '✨ Generando SÚMULA...';
-  
+
   resetTabs();
   tabTxt.classList.add('active');
   sintesisTxt.style.display='block';
   sintesisModal.classList.add('show');
 
   var result = await generarSintesisCapturas();
-  
+
   btn.innerHTML = originalText;
   btn.disabled = false;
 
@@ -2105,6 +2324,8 @@ document.getElementById('btnConfig').addEventListener('click',function(){
   document.getElementById('prismaBanner').value=localStorage.getItem(STORAGE_PRISMA_BANNER)||'';
   document.getElementById('prismaIntro').value=localStorage.getItem(STORAGE_PRISMA_INTRO)||'';
   document.getElementById('prismaGeminiKey').value=localStorage.getItem(STORAGE_GEMINI_KEY)||'';
+  document.getElementById('prismaProductId').value=localStorage.getItem(STORAGE_PRISMA_PRODUCT_ID)||'';
+  document.getElementById('prismaProductAuthor').value=localStorage.getItem(STORAGE_PRISMA_PRODUCT_AUTHOR)||'';
   document.getElementById('configModal').classList.add('show');
 });
 document.getElementById('closeConfigModal').addEventListener('click',function(){document.getElementById('configModal').classList.remove('show');});
@@ -2115,6 +2336,8 @@ document.getElementById('saveConfig').addEventListener('click',function(){
   localStorage.setItem(STORAGE_PRISMA_BANNER,document.getElementById('prismaBanner').value.trim());
   localStorage.setItem(STORAGE_PRISMA_INTRO,document.getElementById('prismaIntro').value);
   localStorage.setItem(STORAGE_GEMINI_KEY,document.getElementById('prismaGeminiKey').value.trim());
+  localStorage.setItem(STORAGE_PRISMA_PRODUCT_ID,document.getElementById('prismaProductId').value.trim());
+  localStorage.setItem(STORAGE_PRISMA_PRODUCT_AUTHOR,document.getElementById('prismaProductAuthor').value.trim());
   aplicarPrismaBranding();
   document.getElementById('configModal').classList.remove('show');
 });
@@ -2163,8 +2386,17 @@ function slugFn(s){return s.replace(/[^a-z0-9]/gi,'_').replace(/_+/g,'_').substr
 function obtenerTitulo(){return tituloDin.textContent||'Documento';}
 
 function buildStandaloneHTML(texto,titulo){
-  var el=document.getElementById('standaloneTemplate');
-  var tpl=el.innerHTML;
+  // 1) Leer y validar PRODUCT_ID
+  var productId = (localStorage.getItem(STORAGE_PRISMA_PRODUCT_ID) || '').trim();
+  if (!productId) {
+    alert('⚠️ Configura primero el "ID del Producto" (Sustrato) en ⚙️ → Ajustes Prisma.\n\nSin este ID el producto exportado no tendrá candado de seguridad y cualquiera podrá usarlo gratis.');
+    return null;
+  }
+
+  var productAuthor = (localStorage.getItem(STORAGE_PRISMA_PRODUCT_AUTHOR) || '').trim();
+
+  // 2) Preparar datos
+  var tpl=document.getElementById('standaloneTemplate').innerHTML;
   var jsonContent=JSON.stringify(texto).replace(/<\//g,'<\\/');
   var safeTitle=titulo.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   var isDark=document.body.classList.contains('dark-theme');
@@ -2172,7 +2404,6 @@ function buildStandaloneHTML(texto,titulo){
   var prismaLogo=localStorage.getItem(STORAGE_PRISMA_LOGO)||'';
   var prismaBanner=localStorage.getItem(STORAGE_PRISMA_BANNER)||'';
   var prismaIntro=localStorage.getItem(STORAGE_PRISMA_INTRO)||'';
-  var geminiKey=localStorage.getItem(STORAGE_GEMINI_KEY)||'';
 
   var logoHtml = prismaLogo ? '<img src="'+escAttr(prismaLogo)+'" class="brand-logo" alt="PRISMA">' : '';
   var bannerStyle = prismaBanner
@@ -2182,10 +2413,14 @@ function buildStandaloneHTML(texto,titulo){
     ? '<div class="prisma-intro">'+escHtml(prismaIntro).replace(/\n/g,'<br>')+'</div>'
     : '';
 
+  // 3) Sustituir los 9 placeholders
   return tpl
     .split('__SUMMULA_CONTENT__').join(jsonContent)
     .split('__SUMMULA_TITLE__').join(safeTitle)
     .split('__SUMMULA_THEME__').join(isDark?'dark':'light')
+    .split('__PRODUCT_ID_JSON__').join(JSON.stringify(productId))
+    .split('__PRODUCT_TITLE_JSON__').join(JSON.stringify(titulo))
+    .split('__PRODUCT_AUTHOR_JSON__').join(JSON.stringify(productAuthor))
     .split('__PRISMA_LOGO__').join(logoHtml)
     .split('__PRISMA_BANNER_STYLE__').join(bannerStyle)
     .split('__PRISMA_INTRO__').join(introHtml);
@@ -2196,6 +2431,7 @@ var texto=textarea.value;
 if(!texto.trim()){alert('No hay contenido');return;}
 var titulo=obtenerTitulo();
 var html=buildStandaloneHTML(texto,titulo);
+if(!html) return; // guardia: PRODUCT_ID faltante
 descargarArchivo(new Blob([html],{type:'text/html;charset=utf-8'}),slugFn(titulo)+'.html');
 currentReadingSpan.textContent='✅ HTML exportado';
 });
@@ -2205,6 +2441,7 @@ var texto=textarea.value;
 if(!texto.trim()){alert('No hay contenido');return;}
 var titulo=obtenerTitulo();
 var html=buildStandaloneHTML(texto,titulo);
+if(!html) return; // guardia: PRODUCT_ID faltante
 var w=window.open('','_blank');
 if(!w){alert('⚠️ Activa las ventanas emergentes');return;}
 w.document.open();w.document.write(html);w.document.close();
@@ -2240,7 +2477,7 @@ descargarArchivo(new Blob([l.join('\n')],{type:'text/plain'}),slugFn(obtenerTitu
 aplicarTema();aplicarPrismaBranding();pushHistorial();
 try{generarMapa();}catch(e){console.error('Init:',e);}
 setInterval(function(){if(textarea.value!==historial[historialPos]){pushHistorial();guardarContenido();}},2000);
-console.log('%c🟢 Nexus Acelerador · PRISMA listo','background:linear-gradient(90deg,#3498db,#9b59b6);color:#fff;padding:4px 12px;border-radius:6px;font-weight:bold');
+console.log('%c🟢 Nexus Acelerador · PRISMA listo · Fase 1 (auth + PRODUCT_ID)','background:linear-gradient(90deg,#3498db,#9b59b6);color:#fff;padding:4px 12px;border-radius:6px;font-weight:bold');
 })();
 </script>
 </body>
