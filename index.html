@@ -836,9 +836,18 @@ function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g, function(c){ re
 function getDeviceUUID(){ var d = localStorage.getItem(LS.device); if (!d){ d = 'dev-' + Date.now() + '-' + Math.random().toString(36).slice(2,10); localStorage.setItem(LS.device, d); } return d; }
 function api(data){
   var merged = Object.assign({}, data); merged.ua = navigator.userAgent || ''; merged.ip = '';
-  return fetch(APPS_URL, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams(merged).toString() }).then(function(r){ return r.json(); });
-}
-function liberar(){
+  return fetch(APPS_URL, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams(merged).toString() })
+  .then(function(r) {
+    return r.text().then(function(texto) {
+      try {
+        return JSON.parse(texto);
+      } catch (e) {
+        // Si el navegador bloquea o falla, lanzamos un error amigable
+        throw new Error("Error de conexión. Verifica tu internet o desactiva bloqueadores de anuncios (como el escudo de tu navegador) e intenta de nuevo.");
+      }
+    });
+  });
+}function liberar(){
   overlay.style.display = 'none';
   window.__NEXUS_AUTH_OK = true;
   if (typeof window.__NEXUS_INIT === 'function') { try { window.__NEXUS_INIT(); } catch(e){} }
