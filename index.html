@@ -341,25 +341,27 @@ select.form-select:focus,input.form-control:focus,textarea.form-control:focus{ou
         <span style="background:#9b59b6"></span><span style="background:#c9a227"></span>
         <span style="background:#2ecc71"></span>
       </div>
-
-      <!-- NUEVO: PRODUCT_ID -->
       <div class="mb-2">
         <label>ID del Producto <span style="color:#e74c3c">*</span></label>
         <input type="text" class="form-control" id="prismaProductId" placeholder="ej: cuatro-crimenes">
-        <small style="color:var(--text-secondary);font-size:.7rem;display:block;margin-top:4px;">
-          Obligatorio. Debe coincidir con el ID en la hoja <b>Productos</b> del Sustrato. Sin este ID, la exportación se bloquea.
-        </small>
       </div>
-
-      <!-- NUEVO: PRODUCT_AUTHOR -->
       <div class="mb-2">
         <label>Autor de la Obra</label>
         <input type="text" class="form-control" id="prismaProductAuthor" placeholder="ej: Fermín Mármol León">
-        <small style="color:var(--text-secondary);font-size:.7rem;display:block;margin-top:4px;">
-          Aparece en la pantalla de compra/ingreso del producto exportado.
-        </small>
       </div>
-
+      <div class="mb-2">
+        <label>Modalidad del Producto</label>
+        <select class="form-select" id="prismaAuthMode">
+          <option value="paid">De Pago (Requiere validación de pago)</option>
+          <option value="free">Gratuito (Registro directo automático)</option>
+        </select>
+      </div>
+      <div class="mb-2 form-check ms-2" style="display:none;" id="donationContainer">
+        <input class="form-check-input" type="checkbox" id="prismaDonation">
+        <label class="form-check-label" style="font-size:0.85rem; text-transform:none; color:var(--text);" for="prismaDonation">
+          Habilitar botón de donación (solo para gratuitos)
+        </label>
+      </div>
       <div class="mb-2"><label>URL del Logo (header)</label><input type="text" class="form-control" id="prismaLogo" placeholder="https://tu-logo.png"></div>
       <div class="mb-2"><label>URL del Banner (fondo del header)</label><input type="text" class="form-control" id="prismaBanner" placeholder="https://tu-banner.jpg"></div>
       <div class="mb-2"><label>Texto de Introducción de Prisma</label><textarea class="form-control" id="prismaIntro" rows="2" placeholder="Se inyectará al inicio..."></textarea></div>
@@ -601,6 +603,7 @@ body.dark select option{background-color:#1a1a2e;color:#e8ecf5}
 #nexusAuth .btn:active{transform:scale(.98)}
 #nexusAuth .btn.alt{background:transparent;border:1px solid #c9a227;color:#c9a227}
 #nexusAuth .btn.success{background:linear-gradient(135deg,#2ecc71,#27ae60)}
+#nexusAuth .btn.donate{background:linear-gradient(135deg,#e74c3c,#c0392b)}
 #nexusAuth .info-box{background:rgba(15,17,23,.6);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:14px;font-size:13px;margin-bottom:14px;line-height:1.6;color:#b0b8c5}
 #nexusAuth .info-box b{color:#c9a227}
 #nexusAuth .metodo{padding:12px;background:rgba(255,255,255,.03);border-radius:8px;border:1px solid rgba(255,255,255,.1);margin-bottom:8px;cursor:pointer;transition:all .2s}
@@ -637,6 +640,7 @@ __PRISMA_INTRO__
   <span class="timer" id="timerDisplay">00:00</span>
   <button class="btn-settings" id="btnConfigExp" title="Configurar API Key">⚙️</button>
   <button class="btn-accion" id="btnHelp" style="background:#17a2b8;" title="Ayuda / Tutorial">?</button>
+  <button class="btn-accion" id="btnDonar" style="background:#e74c3c; display:none; margin-left:10px;" title="Apoyar este proyecto">❤️ Apoyar</button>
   <span class="status" id="status">Listo</span>
 </div>
 
@@ -720,6 +724,26 @@ __PRISMA_INTRO__
   </div>
 </div>
 
+<!-- Modal Donación -->
+<div class="modal-overlay" id="donationModal" style="z-index:9998;">
+  <div class="modal-content" style="max-width:440px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+      <h5 style="color:var(--prisma-gold); font-size:1.4rem;"><i class="fas fa-heart" style="color:#e74c3c;"></i> Apoyar este Proyecto</h5>
+      <button id="closeDonation" class="close-x">&times;</button>
+    </div>
+    <p style="font-size:.95rem; line-height:1.6; margin-bottom:16px; color:var(--text); text-align:center;">
+      Tu donación nos ayuda a mantener este ecosistema libre y accesible para todos. ¡Gracias por apoyar la educación!
+    </p>
+    <div style="background:var(--editor-bg); padding:15px; border-radius:10px; text-align:center; border:1px solid var(--border);">
+      <p style="margin:0 0 10px 0; font-size:.85rem; color:var(--text-sec);">Para donar, puedes usar nuestros métodos de pago:</p>
+      <p style="margin:5px 0; font-size:.9rem;"><b>PagoMóvil (BDV):</b> V-10849867 / 04166334492</p>
+      <p style="margin:5px 0; font-size:.9rem;"><b>PayPal:</b> sieveresgerardk@gmail.com</p>
+      <p style="margin:15px 0 0 0; font-size:.75rem; font-style:italic; color:var(--text-sec);">Al ser una donación opcional, no requiere validación para acceder al contenido.</p>
+    </div>
+    <button id="btnCloseDonation2" class="btn-sumula-accion w-100" style="border-radius:10px; margin-top:20px;">Cerrar</button>
+  </div>
+</div>
+
 <!-- Modal Síntesis -->
 <div class="modal-overlay" id="sintesisModal">
   <div class="modal-content" style="max-width:880px;width:94%;">
@@ -790,10 +814,13 @@ __PRISMA_INTRO__
 /* ═══════════ AUTH PRISMA (Candado de Seguridad) ═══════════ */
 (function(){
 'use strict';
-var APPS_URL = 'https://script.google.com/macros/s/AKfycbwvRRiBG0lgdhZPdHdPkFmOq45cwqORUDRljfkKn00WsDQqqAG_xQASnoysLb2RlVWU/exec';
+var APPS_URL = 'https://script.google.com/macros/s/AKfycbzP95ODg9_2hA2VPW3enldaNPVOJcqpIvO8EDzrmO0wPVwtMw-TgeEBYXvJs1dmzCO8/exec';
 var PRODUCT_ID = __PRODUCT_ID_JSON__;
 var PRODUCT_TITLE = __PRODUCT_TITLE_JSON__;
 var PRODUCT_AUTHOR = __PRODUCT_AUTHOR_JSON__;
+var AUTH_MODE = "__AUTH_MODE__";       // "paid" o "free"
+var DONATION_ENABLED = __DONATION_ENABLED__;
+
 var LS = { 
   email:'nexus_'+PRODUCT_ID+'_email', 
   token:'nexus_'+PRODUCT_ID+'_sessionToken', 
@@ -818,17 +845,26 @@ function liberar(){
 }
 
 function pantallaInicio(msg){
+  var isFree = (AUTH_MODE === 'free');
+  var btnText = isFree ? 'Acceso Gratuito — Registrarme' : '🛒 Comprar y acceder';
+  var infoText = isFree 
+    ? 'Accede a este contenido de forma libre y gratuita. Solo necesitamos tus datos para registrarte y enviarte tu PIN de acceso.'
+    : 'Domina esta obra con lectura asistida, karaoke interactivo, capturas y síntesis con IA. Compra única · acceso permanente en 2 dispositivos.';
+
   box.innerHTML =
     '<div class="brand"><h2>✨ PRISMA</h2><p>COLECCIÓN LECTOESCUCHA</p></div>' +
     (msg ? '<div class="msg err show">'+esc(msg)+'</div>' : '') +
-    '<div class="info-box"><div style="font-size:16px;font-weight:800;color:#fff;margin-bottom:4px">'+esc(PRODUCT_TITLE)+'</div><div style="font-size:12px;color:#c9a227;margin-bottom:12px">'+esc(PRODUCT_AUTHOR)+'</div>Domina esta obra con lectura asistida, karaoke interactivo, capturas y síntesis con IA. Compra única · acceso permanente en 2 dispositivos.</div>' +
-    '<button class="btn" id="nxGoReg">🛒 Comprar y acceder</button>' +
+    '<div class="info-box"><div style="font-size:16px;font-weight:800;color:#fff;margin-bottom:4px">'+esc(PRODUCT_TITLE)+'</div><div style="font-size:12px;color:#c9a227;margin-bottom:12px">'+esc(PRODUCT_AUTHOR)+'</div>' + infoText + '</div>' +
+    '<button class="btn" id="nxGoReg">' + btnText + '</button>' +
     '<button class="btn alt" id="nxGoLogin">Ya tengo acceso — Ingresar</button>';
+  
   $('nxGoReg').onclick = function(){ pantallaRegistro(); };
   $('nxGoLogin').onclick = function(){ pantallaLogin(); };
 }
 
 function pantallaRegistro(){
+  var isFree = (AUTH_MODE === 'free');
+  var btnText = isFree ? 'Obtener mi PIN de acceso' : 'Continuar al Pago →';
   box.innerHTML =
     '<div class="brand"><h2>📝 Datos Personales</h2><p>Paso 1 de 3</p></div>' +
     '<div class="fld"><label>Nombre</label><input type="text" id="nxN"><div class="err">Obligatorio</div></div>' +
@@ -836,7 +872,7 @@ function pantallaRegistro(){
     '<div class="fld"><label>Documento</label><div class="row"><select id="nxT"><option value="V">V</option><option value="E">E</option></select><input type="text" id="nxD" inputmode="numeric"><div class="err">Inválido</div></div></div>' +
     '<div class="fld"><label>Correo Electrónico</label><input type="email" id="nxE" inputmode="email"><div class="err">Correo inválido</div></div>' +
     '<div class="fld"><label>Teléfono</label><input type="tel" id="nxP" inputmode="tel" placeholder="04141234567"><div class="err">Inválido</div></div>' +
-    '<button class="btn" id="nxNext">Continuar al Pago →</button>' +
+    '<button class="btn" id="nxNext">' + btnText + '</button>' +
     '<button class="btn alt" id="nxBack">← Volver</button>';
   $('nxNext').onclick = validarRegistro;
   $('nxBack').onclick = function(){ pantallaInicio(); };
@@ -848,7 +884,35 @@ function validarRegistro(){
   c.forEach(function(x){ var el = $(x.id); var f = x.row ? el.parentNode.parentNode : el.parentNode; if(!x.fn((el.value||'').trim())){ f.classList.add('bad'); ok=false; } else f.classList.remove('bad'); });
   if(!ok) return;
   datos = { nombre: $('nxN').value.trim(), apellido: $('nxA').value.trim(), tipoDoc: $('nxT').value, numDoc: $('nxD').value.trim(), email: $('nxE').value.trim().toLowerCase(), telefono: $('nxP').value.trim() };
-  pantallaPago();
+  
+  if (AUTH_MODE === 'free') {
+    pantallaRegistroGratis();
+  } else {
+    pantallaPago();
+  }
+}
+
+function pantallaRegistroGratis(){
+  box.innerHTML = '<div class="brand"><h2>⏳ Procesando Registro</h2></div><div style="text-align:center;padding:20px"><div class="spin" style="width:24px;height:24px;border-width:3px"></div></div>';
+  api({ 
+    accion:'registroGratuito', 
+    nombre:datos.nombre, 
+    apellido:datos.apellido, 
+    tipoDoc:datos.tipoDoc, 
+    numDoc:datos.numDoc, 
+    email:datos.email, 
+    telefono:datos.telefono, 
+    idProducto: PRODUCT_ID 
+  }).then(function(r){
+    if(r.ok) {
+      box.innerHTML = '<div class="brand"><h2>✅ Registro Exitoso</h2></div><div class="msg ok show">Te has registrado correctamente.<br><br>Hemos enviado tu <b>PIN de acceso</b> a tu correo electrónico.<br>Revísalo para ingresar.</div><button class="btn success" id="nxGoLogin">Ir a Ingresar</button>';
+      $('nxGoLogin').onclick = function(){ pantallaLogin(); };
+    } else {
+      pantallaInicio(r.mensaje || 'Error al registrar.');
+    }
+  }).catch(function(e){
+    pantallaInicio(e.message || 'Error de conexión.');
+  });
 }
 
 function pantallaPago(){
@@ -1297,6 +1361,17 @@ $('closeWelcome').addEventListener('click', cerrarWelcome);
 $('btnEntendido').addEventListener('click', cerrarWelcome);
 $('btnHelp').addEventListener('click', function(){ welcomeModal.classList.add('show'); });
 
+/* Lógica Donación */
+if(typeof DONATION_ENABLED !== 'undefined' && DONATION_ENABLED) {
+  var btnD = $('btnDonar');
+  if(btnD) {
+    btnD.style.display = 'inline-block';
+    btnD.addEventListener('click', function(){ $('donationModal').classList.add('show'); });
+  }
+  var closeD1 = $('closeDonation'); if(closeD1) closeD1.addEventListener('click', function(){ $('donationModal').classList.remove('show'); });
+  var closeD2 = $('btnCloseDonation2'); if(closeD2) closeD2.addEventListener('click', function(){ $('donationModal').classList.remove('show'); });
+}
+
 btnPlay.addEventListener('click',togglePlayPause);
 btnStop.addEventListener('click',detenerLectura);
 btnLoop.addEventListener('click',function(){bucleActivo=!bucleActivo;btnLoop.classList.toggle('active',bucleActivo);btnLoop.textContent=bucleActivo?'🔁✅':'🔁';});
@@ -1548,6 +1623,7 @@ document.addEventListener('keydown',function(e){
     if(prismarContainer.style.display==='flex'){ $('btnCerrarPrisma').click(); }
     else if(karaokeActivo){kClose.click();}
     else if(sintesisModal.classList.contains('show')){ $('sintesisCancelar').click(); }
+    else if($('donationModal').classList.contains('show')){ $('donationModal').classList.remove('show'); }
   }
 });
 aplicarTema();
@@ -1637,6 +1713,8 @@ var STORAGE_PRISMA_BANNER='nexus_prisma_banner';
 var STORAGE_PRISMA_INTRO='nexus_prisma_intro';
 var STORAGE_PRISMA_PRODUCT_ID='nexus_prisma_product_id';
 var STORAGE_PRISMA_PRODUCT_AUTHOR='nexus_prisma_product_author';
+var STORAGE_PRISMA_AUTH_MODE='nexus_prisma_auth_mode';
+var STORAGE_PRISMA_DONATION='nexus_prisma_donation';
 var STORAGE_GEMINI_KEY='nexus_gemini_key';
 
 async function activarMantenimiento(){
@@ -2326,8 +2404,30 @@ document.getElementById('btnConfig').addEventListener('click',function(){
   document.getElementById('prismaGeminiKey').value=localStorage.getItem(STORAGE_GEMINI_KEY)||'';
   document.getElementById('prismaProductId').value=localStorage.getItem(STORAGE_PRISMA_PRODUCT_ID)||'';
   document.getElementById('prismaProductAuthor').value=localStorage.getItem(STORAGE_PRISMA_PRODUCT_AUTHOR)||'';
+  document.getElementById('prismaAuthMode').value=localStorage.getItem(STORAGE_PRISMA_AUTH_MODE)||'paid';
+  document.getElementById('prismaDonation').checked = localStorage.getItem(STORAGE_PRISMA_DONATION)==='true';
+  
+  // Mostrar/ocultar donación según el modo
+  var authModeSelect = document.getElementById('prismaAuthMode');
+  var donationContainer = document.getElementById('donationContainer');
+  if(authModeSelect.value === 'free') {
+    donationContainer.style.display = 'block';
+  } else {
+    donationContainer.style.display = 'none';
+  }
+  
   document.getElementById('configModal').classList.add('show');
 });
+
+document.getElementById('prismaAuthMode').addEventListener('change', function(){
+  var donationContainer = document.getElementById('donationContainer');
+  if(this.value === 'free') {
+    donationContainer.style.display = 'block';
+  } else {
+    donationContainer.style.display = 'none';
+  }
+});
+
 document.getElementById('closeConfigModal').addEventListener('click',function(){document.getElementById('configModal').classList.remove('show');});
 document.getElementById('cancelConfig').addEventListener('click',function(){document.getElementById('configModal').classList.remove('show');});
 document.getElementById('saveConfig').addEventListener('click',function(){
@@ -2338,6 +2438,8 @@ document.getElementById('saveConfig').addEventListener('click',function(){
   localStorage.setItem(STORAGE_GEMINI_KEY,document.getElementById('prismaGeminiKey').value.trim());
   localStorage.setItem(STORAGE_PRISMA_PRODUCT_ID,document.getElementById('prismaProductId').value.trim());
   localStorage.setItem(STORAGE_PRISMA_PRODUCT_AUTHOR,document.getElementById('prismaProductAuthor').value.trim());
+  localStorage.setItem(STORAGE_PRISMA_AUTH_MODE,document.getElementById('prismaAuthMode').value);
+  localStorage.setItem(STORAGE_PRISMA_DONATION,document.getElementById('prismaDonation').checked);
   aplicarPrismaBranding();
   document.getElementById('configModal').classList.remove('show');
 });
@@ -2394,6 +2496,8 @@ function buildStandaloneHTML(texto,titulo){
   }
 
   var productAuthor = (localStorage.getItem(STORAGE_PRISMA_PRODUCT_AUTHOR) || '').trim();
+  var authMode = localStorage.getItem(STORAGE_PRISMA_AUTH_MODE) || 'paid';
+  var donationEnabled = localStorage.getItem(STORAGE_PRISMA_DONATION) === 'true';
 
   // 2) Preparar datos
   var tpl=document.getElementById('standaloneTemplate').innerHTML;
@@ -2413,7 +2517,7 @@ function buildStandaloneHTML(texto,titulo){
     ? '<div class="prisma-intro">'+escHtml(prismaIntro).replace(/\n/g,'<br>')+'</div>'
     : '';
 
-  // 3) Sustituir los 9 placeholders
+  // 3) Sustituir los placeholders
   return tpl
     .split('__SUMMULA_CONTENT__').join(jsonContent)
     .split('__SUMMULA_TITLE__').join(safeTitle)
@@ -2421,6 +2525,8 @@ function buildStandaloneHTML(texto,titulo){
     .split('__PRODUCT_ID_JSON__').join(JSON.stringify(productId))
     .split('__PRODUCT_TITLE_JSON__').join(JSON.stringify(titulo))
     .split('__PRODUCT_AUTHOR_JSON__').join(JSON.stringify(productAuthor))
+    .split('__AUTH_MODE__').join(authMode)
+    .split('__DONATION_ENABLED__').join(donationEnabled ? 'true' : 'false')
     .split('__PRISMA_LOGO__').join(logoHtml)
     .split('__PRISMA_BANNER_STYLE__').join(bannerStyle)
     .split('__PRISMA_INTRO__').join(introHtml);
@@ -2477,7 +2583,7 @@ descargarArchivo(new Blob([l.join('\n')],{type:'text/plain'}),slugFn(obtenerTitu
 aplicarTema();aplicarPrismaBranding();pushHistorial();
 try{generarMapa();}catch(e){console.error('Init:',e);}
 setInterval(function(){if(textarea.value!==historial[historialPos]){pushHistorial();guardarContenido();}},2000);
-console.log('%c🟢 Nexus Acelerador · PRISMA listo · Fase 1 (auth + PRODUCT_ID)','background:linear-gradient(90deg,#3498db,#9b59b6);color:#fff;padding:4px 12px;border-radius:6px;font-weight:bold');
+console.log('%c🟢 Nexus Acelerador · PRISMA listo · Fase 1 (auth + PRODUCT_ID + Modo Gratis + Donación)','background:linear-gradient(90deg,#3498db,#9b59b6);color:#fff;padding:4px 12px;border-radius:6px;font-weight:bold');
 })();
 </script>
 </body>
